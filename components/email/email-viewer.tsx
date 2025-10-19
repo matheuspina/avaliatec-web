@@ -20,7 +20,7 @@ import {
   Loader2
 } from "lucide-react"
 import { format } from "date-fns"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import DOMPurify from "isomorphic-dompurify"
 
 interface EmailViewerProps {
@@ -29,6 +29,38 @@ interface EmailViewerProps {
 
 export function EmailViewer({ className }: EmailViewerProps) {
   const { selectedEmail, loadingEmailDetail } = useEmail()
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Handle image errors after content is rendered
+  useEffect(() => {
+    if (!contentRef.current) return
+
+    const handleImageError = (e: Event) => {
+      const img = e.target as HTMLImageElement
+      if (img.tagName === 'IMG') {
+        // Replace broken image with a placeholder
+        img.style.display = 'inline-block'
+        img.style.width = '24px'
+        img.style.height = '24px'
+        img.style.backgroundColor = '#f3f4f6'
+        img.style.border = '1px solid #e5e7eb'
+        img.style.borderRadius = '4px'
+        img.alt = '[Image not available]'
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSA5LTYgNi02LTYiIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+'
+      }
+    }
+
+    const images = contentRef.current.querySelectorAll('img')
+    images.forEach(img => {
+      img.addEventListener('error', handleImageError)
+    })
+
+    return () => {
+      images.forEach(img => {
+        img.removeEventListener('error', handleImageError)
+      })
+    }
+  }, [selectedEmail])
 
   if (loadingEmailDetail) {
     return (
@@ -54,11 +86,27 @@ export function EmailViewer({ className }: EmailViewerProps) {
     )
   }
 
+  // Process HTML content to handle CID references
+  const processEmailContent = (content: string): string => {
+    if (selectedEmail.body.contentType !== "html") {
+      return `<pre>${content}</pre>`
+    }
+
+    // Replace CID references with placeholder or remove problematic images
+    let processedContent = content
+      // Replace cid: image sources with a placeholder or remove them
+      .replace(/src=["']cid:[^"']*["']/gi, 'src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSA5LTYgNi02LTYiIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+" alt="[Image not available]"')
+      // Also handle background-image CSS properties with cid references
+      .replace(/background-image:\s*url\(["']?cid:[^"')]*["']?\)/gi, 'background-image: none')
+      // Remove any remaining cid: references in other attributes
+      .replace(/cid:[^"'\s>]*/gi, '#')
+
+    return processedContent
+  }
+
   // Sanitize HTML content
   const sanitizedBody = DOMPurify.sanitize(
-    selectedEmail.body.contentType === "html" 
-      ? selectedEmail.body.content 
-      : `<pre>${selectedEmail.body.content}</pre>`,
+    processEmailContent(selectedEmail.body.content),
     {
       ALLOWED_TAGS: [
         "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
@@ -152,7 +200,8 @@ export function EmailViewer({ className }: EmailViewerProps) {
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
           <div
-            className="prose prose-sm dark:prose-invert max-w-none"
+            ref={contentRef}
+            className="prose prose-sm dark:prose-invert max-w-none [&_img]:max-w-full [&_img]:h-auto"
             dangerouslySetInnerHTML={{ __html: sanitizedBody }}
           />
         </div>
