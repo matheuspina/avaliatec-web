@@ -38,9 +38,9 @@ import { useToast } from "@/hooks/use-toast"
 type Task = {
   id: string
   title: string
-  description: string
+  description: string | null
   status: string
-  deadline: string
+  deadline: string | null
   assignee: string
   labels?: string[]
   project?: {
@@ -115,9 +115,11 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
             </div>
             <div className="flex-1 min-w-0">
               <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
-              <CardDescription className="text-xs mt-1">
-                {task.description}
-              </CardDescription>
+              {task.description && (
+                <CardDescription className="text-xs mt-1">
+                  {task.description}
+                </CardDescription>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -129,7 +131,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
             </div>
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
-              {task.assignee}
+              {task.assignee || "Sem responsável"}
             </div>
           </div>
           {task.project && (
@@ -241,10 +243,10 @@ export default function TarefasPage() {
           data.map((t) => ({
             id: t.id,
             title: t.title,
-            description: t.description ?? "",
+            description: t.description ?? null,
             status: t.status,
-            deadline: t.deadline ?? "",
-            assignee: t.assignee,
+            deadline: t.deadline ?? null,
+            assignee: t.assignee ?? "",
             labels: t.labels ?? [],
             project: t.project,
           }))
@@ -538,9 +540,9 @@ export default function TarefasPage() {
     try {
       await updateTask(updatedTask.id, {
         title: updatedTask.title,
-        description: updatedTask.description,
+        description: updatedTask.description ?? null,
         status: updatedTask.status,
-        deadline: updatedTask.deadline || undefined,
+        deadline: updatedTask.deadline ?? undefined,
       })
     } catch (err) {
       console.error("Erro ao atualizar tarefa:", err)
@@ -556,10 +558,10 @@ export default function TarefasPage() {
           data.map((t) => ({
             id: t.id,
             title: t.title,
-            description: t.description ?? "",
+            description: t.description ?? null,
             status: t.status,
-            deadline: t.deadline ?? "",
-            assignee: t.assignee,
+            deadline: t.deadline ?? null,
+            assignee: t.assignee ?? "",
             labels: t.labels ?? [],
             project: t.project,
           }))
@@ -597,10 +599,10 @@ export default function TarefasPage() {
           data.map((t) => ({
             id: t.id,
             title: t.title,
-            description: t.description ?? "",
+            description: t.description ?? null,
             status: t.status,
-            deadline: t.deadline ?? "",
-            assignee: t.assignee,
+            deadline: t.deadline ?? null,
+            assignee: t.assignee ?? "",
             labels: t.labels ?? [],
             project: t.project,
           }))
@@ -644,10 +646,10 @@ export default function TarefasPage() {
         data.map((t) => ({
           id: t.id,
           title: t.title,
-          description: t.description ?? "",
+          description: t.description ?? null,
           status: t.status,
-          deadline: t.deadline ?? "",
-          assignee: t.assignee,
+          deadline: t.deadline ?? null,
+          assignee: t.assignee ?? "",
           labels: t.labels ?? [],
           project: t.project,
         }))

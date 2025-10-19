@@ -641,7 +641,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
               </div>
             ) : (
               <Select
-                value={editedTask.project?.id || ""}
+                value={editedTask.project ? (editedTask.project as { id: string }).id : ""}
                 onValueChange={async (value) => {
                   if (!editedTask.id || !value) return
                   const selectedProject: ProjectListItem | undefined = projects.find((p) => p.id === value)

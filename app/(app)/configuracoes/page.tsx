@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -37,11 +37,7 @@ export default function ConfiguracoesPage() {
     description: "",
   })
 
-  useEffect(() => {
-    loadStatuses()
-  }, [])
-
-  const loadStatuses = async () => {
+  const loadStatuses = useCallback(async () => {
     try {
       setLoading(true)
       const data = await listProjectStatuses(false)
@@ -56,7 +52,11 @@ export default function ConfiguracoesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    void loadStatuses()
+  }, [loadStatuses])
 
   const handleOpenDialog = (status?: ProjectStatus) => {
     if (status) {
@@ -111,7 +111,7 @@ export default function ConfiguracoesPage() {
       }
 
       setIsDialogOpen(false)
-      loadStatuses()
+      await loadStatuses()
     } catch (error) {
       console.error("Erro ao salvar status:", error)
       toast({
@@ -131,7 +131,7 @@ export default function ConfiguracoesPage() {
         title: "Sucesso",
         description: "Status excluído com sucesso",
       })
-      loadStatuses()
+      await loadStatuses()
     } catch (error) {
       console.error("Erro ao excluir status:", error)
       toast({
@@ -147,7 +147,7 @@ export default function ConfiguracoesPage() {
       await updateProjectStatus(status.id, {
         isActive: !status.isActive,
       })
-      loadStatuses()
+      await loadStatuses()
     } catch (error) {
       console.error("Erro ao atualizar status:", error)
     }

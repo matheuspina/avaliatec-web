@@ -5,7 +5,7 @@ export type ProjectStatusUI = string;
 
 type StatusMeta = { label: ProjectStatusUI; color: string };
 
-const STATUS_META_MAP: Record<string, StatusMeta> = {
+export const STATUS_META_MAP: Record<string, StatusMeta> = {
   planning: { label: "Planejamento", color: "#3B82F6" },
   active: { label: "Em andamento", color: "#10B981" },
   on_hold: { label: "Em espera", color: "#F59E0B" },
@@ -20,11 +20,11 @@ function getFallbackStatusMeta(status?: string): StatusMeta {
   return STATUS_META_MAP.planning;
 }
 
-function mapDbStatusToUI(status?: string): ProjectStatusUI {
+export function mapDbStatusToUI(status?: string): ProjectStatusUI {
   return getFallbackStatusMeta(status).label;
 }
 
-function getFallbackStatusColor(status?: string): string {
+export function getFallbackStatusColor(status?: string): string {
   return getFallbackStatusMeta(status).color;
 }
 

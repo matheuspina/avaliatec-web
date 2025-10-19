@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type { Client } from '@/lib/types'
+import { getFallbackStatusColor, mapDbStatusToUI } from '@/lib/data/projects'
 
 async function getCurrentUserId(): Promise<string | null> {
   const supabase = createSupabaseClient()
@@ -54,12 +55,14 @@ export type ClientSummaryProject = {
   status: string | null
   deadline: string | null
   code: string | null
+  statusColor: string | null
 }
 
 export type ClientSummaryTask = {
   id: string
   title: string
   status: string | null
+  statusKey?: string | null
   deadline: string | null
   project_id: string | null
   project_title: string | null
@@ -109,15 +112,31 @@ export async function getClientSummary(clientId: string): Promise<{ data: Client
   const projects = (projectsData ?? []).map((project: any) => ({
     id: project.id,
     title: project.name ?? "",
-    status: project.status ?? null,
+    status: project.status ? mapDbStatusToUI(project.status) : null,
     deadline: project.end_date ?? null,
     code: project.code ?? null,
+    statusColor: project.status ? getFallbackStatusColor(project.status) : null,
   }))
+
+  const TASK_STATUS_LABELS: Record<string, string> = {
+    backlog: 'Backlog',
+    todo: 'A Fazer',
+    in_progress: 'Em andamento',
+    review: 'Revisão',
+    done: 'Concluído',
+    cancelled: 'Cancelado',
+  }
+
+  const mapTaskStatusToUI = (status?: string | null) => {
+    if (!status) return null
+    return TASK_STATUS_LABELS[status] ?? status
+  }
 
   const tasks = (tasksData ?? []).map((task: any) => ({
     id: task.id,
     title: task.title,
-    status: task.status ?? null,
+    status: mapTaskStatusToUI(task.status),
+    statusKey: task.status ?? null,
     deadline: task.deadline ?? null,
     project_id: task.project_id ?? null,
     project_title: task.projects?.name ?? null,

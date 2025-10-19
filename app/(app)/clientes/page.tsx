@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -123,6 +124,17 @@ export default function ClientesPage() {
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
 
   const mapboxAccessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+
+  const getStatusBadgeStyle = (color?: string | null) =>
+    color
+      ? {
+          borderColor: color,
+          color,
+        }
+      : undefined
+
+  const formatDate = (value?: string | null) =>
+    value ? new Date(value).toLocaleDateString("pt-BR") : "—"
 
   async function fetchClients() {
     setLoading(true)
@@ -601,78 +613,105 @@ export default function ClientesPage() {
             </div>
           ) : viewSummary ? (
             <div className="space-y-6">
-              <div>
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Dados do cliente
-                </h4>
-                <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <p className="font-medium">CNPJ / CPF</p>
-                    <p className="text-muted-foreground">
-                      {viewSummary.client.document ? formatDocument(viewSummary.client.document) : "—"}
-                    </p>
+              <section className="rounded-xl border border-border/50 bg-card/40 p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                    Dados do cliente
+                  </h4>
+                  <Badge variant="outline" className="capitalize">
+                    {viewSummary.client.type === "company" ? "Empresa" : "Pessoa Física"}
+                  </Badge>
+                </div>
+                <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">CNPJ / CPF</p>
+                    <p>{viewSummary.client.document ? formatDocument(viewSummary.client.document) : "—"}</p>
                   </div>
-                  <div>
-                    <p className="font-medium">Telefone</p>
-                    <p className="text-muted-foreground">
-                      {viewSummary.client.phone ? formatPhone(viewSummary.client.phone) : "—"}
-                    </p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Telefone</p>
+                    <p>{viewSummary.client.phone ? formatPhone(viewSummary.client.phone) : "—"}</p>
                   </div>
-                  <div>
-                    <p className="font-medium">Email</p>
-                    <p className="text-muted-foreground break-all">{viewSummary.client.email || "—"}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p>
+                    <p className="break-all">{viewSummary.client.email || "—"}</p>
                   </div>
-                  <div>
-                    <p className="font-medium">Tipo</p>
-                    <p className="text-muted-foreground">
-                      {viewSummary.client.type === "company" ? "Empresa" : "Pessoa Física"}
-                    </p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tipo</p>
+                    <p>{viewSummary.client.type === "company" ? "Empresa" : "Pessoa Física"}</p>
                   </div>
-                  <div className="sm:col-span-2">
-                    <p className="font-medium">Endereço</p>
-                    <p className="text-muted-foreground">{viewSummary.client.address || "—"}</p>
+                  <div className="space-y-1 sm:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço</p>
+                    <p>{viewSummary.client.address || "—"}</p>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div>
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Projetos vinculados
-                </h4>
+              <section className="rounded-xl border border-border/50 bg-card/40 p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                      Projetos vinculados
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {viewSummary.projects.length} {viewSummary.projects.length === 1 ? "projeto" : "projetos"}
+                    </p>
+                  </div>
+                </div>
                 {viewSummary.projects.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Nenhum projeto cadastrado para este cliente.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum projeto cadastrado para este cliente.
+                  </p>
                 ) : (
-                  <div className="mt-3 space-y-3">
+                  <div className="space-y-3">
                     {viewSummary.projects.map((project) => (
-                      <div key={project.id} className="rounded-md border bg-muted/30 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="font-medium leading-tight">{project.title}</p>
-                            <p className="text-xs text-muted-foreground">Código: {project.code}</p>
+                      <Link
+                        key={project.id}
+                        href={`/projetos/${project.id}`}
+                        className="block rounded-lg border border-border/40 bg-background/60 p-4 transition hover:border-primary/60 hover:bg-background/80"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-sm font-semibold leading-tight line-clamp-2">
+                              {project.title || "Projeto sem título"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Código: {project.code ?? "—"}</p>
                           </div>
-                          <Badge variant="secondary" className="capitalize">
-                            {project.status || "Sem status"}
-                          </Badge>
+                          {project.status && (
+                            <Badge
+                              variant="outline"
+                              className="capitalize"
+                              style={getStatusBadgeStyle(project.statusColor)}
+                            >
+                              {project.status}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Prazo: {project.deadline ? new Date(project.deadline).toLocaleDateString("pt-BR") : "—"}
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Prazo: {formatDate(project.deadline)}
                         </p>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
-              </div>
+              </section>
 
-              <div>
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Tarefas relacionadas
-                </h4>
+              <section className="rounded-xl border border-border/50 bg-card/40 p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                      Tarefas relacionadas
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {viewSummary.tasks.length} {viewSummary.tasks.length === 1 ? "tarefa" : "tarefas"}
+                    </p>
+                  </div>
+                </div>
                 {viewSummary.tasks.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     Nenhuma tarefa vinculada aos projetos deste cliente.
                   </p>
                 ) : (
-                  <Table className="mt-3">
+                  <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Tarefa</TableHead>
@@ -682,20 +721,45 @@ export default function ClientesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {viewSummary.tasks.map((task) => (
-                        <TableRow key={task.id}>
-                          <TableCell className="font-medium">{task.title}</TableCell>
-                          <TableCell>{task.project_title ?? "—"}</TableCell>
-                          <TableCell className="capitalize">{task.status ?? "—"}</TableCell>
-                          <TableCell>
-                            {task.deadline ? new Date(task.deadline).toLocaleDateString("pt-BR") : "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {viewSummary.tasks.map((task) => {
+                        const taskLink = task.project_id ? `/projetos/${task.project_id}` : undefined
+                        return (
+                          <TableRow key={task.id} className={taskLink ? "cursor-pointer hover:bg-accent/40" : undefined}>
+                            <TableCell className="font-medium">
+                              {taskLink ? (
+                                <Link href={taskLink} className="text-foreground underline-offset-4 hover:underline">
+                                  {task.title}
+                                </Link>
+                              ) : (
+                                task.title
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {task.project_id ? (
+                                <Link href={`/projetos/${task.project_id}`} className="text-muted-foreground underline-offset-4 hover:underline">
+                                  {task.project_title ?? "—"}
+                                </Link>
+                              ) : (
+                                task.project_title ?? "—"
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {task.status ? (
+                                <Badge variant="outline" className="capitalize">
+                                  {task.status}
+                                </Badge>
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDate(task.deadline)}</TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 )}
-              </div>
+              </section>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

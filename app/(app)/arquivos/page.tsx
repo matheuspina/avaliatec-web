@@ -17,7 +17,7 @@ import {
   Upload,
   Search,
   FileText,
-  Image,
+  Image as ImageIcon,
   File,
   Download,
   Trash2,
@@ -83,7 +83,7 @@ export default function ArquivosPage() {
       case "pdf":
         return <FileText className="h-4 w-4 text-red-500" />
       case "image":
-        return <Image className="h-4 w-4 text-blue-500" />
+        return <ImageIcon className="h-4 w-4 text-blue-500" aria-hidden="true" />
       case "doc":
         return <FileText className="h-4 w-4 text-blue-600" />
       default:
@@ -160,7 +160,7 @@ export default function ArquivosPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Imagens</CardTitle>
-            <Image className="h-4 w-4 text-blue-500" />
+            <ImageIcon className="h-4 w-4 text-blue-500" aria-hidden="true" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
