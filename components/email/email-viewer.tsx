@@ -17,7 +17,8 @@ import {
   Users, 
   Paperclip,
   Download,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react"
 import { format } from "date-fns"
 import { useState, useEffect, useRef } from "react"
@@ -30,6 +31,19 @@ interface EmailViewerProps {
 export function EmailViewer({ className }: EmailViewerProps) {
   const { selectedEmail, loadingEmailDetail } = useEmail()
   const contentRef = useRef<HTMLDivElement>(null)
+
+  // Debug log
+  useEffect(() => {
+    if (selectedEmail) {
+      console.log("Selected email:", {
+        id: selectedEmail.id,
+        subject: selectedEmail.subject,
+        hasBody: !!selectedEmail.body,
+        bodyContent: selectedEmail.body?.content ? "present" : "missing",
+        bodyType: selectedEmail.body?.contentType
+      })
+    }
+  }, [selectedEmail])
 
   // Handle image errors after content is rendered
   useEffect(() => {
@@ -86,42 +100,79 @@ export function EmailViewer({ className }: EmailViewerProps) {
     )
   }
 
+  // Check if email has required data
+  if (!selectedEmail.body || !selectedEmail.from) {
+    console.error("Email missing required data:", selectedEmail)
+    return (
+      <div className={cn("flex h-full items-center justify-center", className)}>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive opacity-50" />
+          <p className="text-sm text-muted-foreground">
+            Error loading email content
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // Process HTML content to handle CID references
-  const processEmailContent = (content: string): string => {
-    if (selectedEmail.body.contentType !== "html") {
+  const processEmailContent = (content: string, contentType: string): string => {
+    try {
+      if (!content) return ""
+      
+      if (contentType !== "html") {
+        return `<pre>${content}</pre>`
+      }
+
+      // Replace CID references with placeholder or remove problematic images
+      let processedContent = content
+        // Replace cid: image sources with a placeholder or remove them
+        .replace(/src=["']cid:[^"']*["']/gi, 'src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSA5LTYgNi02LTYiIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+" alt="[Image not available]"')
+        // Also handle background-image CSS properties with cid references
+        .replace(/background-image:\s*url\(["']?cid:[^"')]*["']?\)/gi, 'background-image: none')
+        // Remove any remaining cid: references in other attributes
+        .replace(/cid:[^"'\s>]*/gi, '#')
+
+      return processedContent
+    } catch (error) {
+      console.error("Error processing email content:", error)
       return `<pre>${content}</pre>`
     }
-
-    // Replace CID references with placeholder or remove problematic images
-    let processedContent = content
-      // Replace cid: image sources with a placeholder or remove them
-      .replace(/src=["']cid:[^"']*["']/gi, 'src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSA5LTYgNi02LTYiIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+" alt="[Image not available]"')
-      // Also handle background-image CSS properties with cid references
-      .replace(/background-image:\s*url\(["']?cid:[^"')]*["']?\)/gi, 'background-image: none')
-      // Remove any remaining cid: references in other attributes
-      .replace(/cid:[^"'\s>]*/gi, '#')
-
-    return processedContent
   }
 
   // Sanitize HTML content
-  const sanitizedBody = DOMPurify.sanitize(
-    processEmailContent(selectedEmail.body.content),
-    {
-      ALLOWED_TAGS: [
-        "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
-        "ul", "ol", "li", "a", "img", "table", "thead", "tbody", "tr", "th", "td",
-        "div", "span", "pre", "code", "blockquote"
-      ],
-      ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "style"],
-    }
-  )
+  let sanitizedBody = ""
+  try {
+    const emailContent = selectedEmail?.body?.content || ""
+    const emailContentType = selectedEmail?.body?.contentType || "text"
+    
+    sanitizedBody = DOMPurify.sanitize(
+      processEmailContent(emailContent, emailContentType),
+      {
+        ALLOWED_TAGS: [
+          "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
+          "ul", "ol", "li", "a", "img", "table", "thead", "tbody", "tr", "th", "td",
+          "div", "span", "pre", "code", "blockquote"
+        ],
+        ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "style"],
+      }
+    )
+  } catch (error) {
+    console.error("Error sanitizing email body:", error)
+    sanitizedBody = "<p>Error loading email content</p>"
+  }
 
   // Format date
-  const formattedDate = format(
-    new Date(selectedEmail.receivedDateTime),
-    "EEEE, MMMM d, yyyy 'at' h:mm a"
-  )
+  let formattedDate = ""
+  try {
+    formattedDate = format(
+      new Date(selectedEmail.receivedDateTime),
+      "EEEE, MMMM d, yyyy 'at' h:mm a"
+    )
+  } catch (error) {
+    console.error("Error formatting date:", error)
+    formattedDate = selectedEmail.receivedDateTime || ""
+  }
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
@@ -138,13 +189,13 @@ export function EmailViewer({ className }: EmailViewerProps) {
           <div className="flex items-start gap-3">
             <Avatar className="h-10 w-10">
               <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-medium text-primary">
-                {selectedEmail.from.emailAddress.name.charAt(0).toUpperCase()}
+                {selectedEmail?.from?.emailAddress?.name?.charAt(0)?.toUpperCase() || "?"}
               </div>
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium">
-                  {selectedEmail.from.emailAddress.name}
+                  {selectedEmail?.from?.emailAddress?.name || "Unknown"}
                 </span>
                 {!selectedEmail.isRead && (
                   <Badge variant="secondary" className="text-xs">
@@ -153,7 +204,7 @@ export function EmailViewer({ className }: EmailViewerProps) {
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
-                {selectedEmail.from.emailAddress.address}
+                {selectedEmail?.from?.emailAddress?.address || ""}
               </div>
             </div>
           </div>
