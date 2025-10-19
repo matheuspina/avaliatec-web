@@ -5,6 +5,7 @@ import { EmailProvider, useEmail } from "@/contexts/email-context"
 import { FolderSidebar } from "@/components/email/folder-sidebar"
 import { EmailListPanel } from "@/components/email/email-list-panel"
 import { EmailViewer } from "@/components/email/email-viewer"
+import { EmailErrorBoundary } from "@/components/email/error-boundary"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { AlertCircle, RefreshCw, Mail, Menu, ArrowLeft } from "lucide-react"
@@ -117,7 +118,9 @@ function EmailContent() {
 
         {/* Email Viewer */}
         <div className="flex-1 overflow-hidden">
-          <EmailViewer />
+          <EmailErrorBoundary>
+            <EmailViewer />
+          </EmailErrorBoundary>
         </div>
       </div>
     )
@@ -158,7 +161,9 @@ function EmailContent() {
 
         {/* Desktop: Email Viewer */}
         <div className="hidden md:block flex-1">
-          <EmailViewer />
+          <EmailErrorBoundary>
+            <EmailViewer />
+          </EmailErrorBoundary>
         </div>
       </div>
 

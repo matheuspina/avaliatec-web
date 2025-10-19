@@ -115,9 +115,14 @@ export function EmailViewer({ className }: EmailViewerProps) {
     )
   }
 
-  // Process HTML content to handle CID references
-  const processEmailContent = (content: string, contentType: string): string => {
-    try {
+  // Render content with error boundary
+  let sanitizedBody = ""
+  let formattedDate = ""
+  let renderError: string | null = null
+
+  try {
+    // Process HTML content to handle CID references
+    const processEmailContent = (content: string, contentType: string): string => {
       if (!content) return ""
       
       if (contentType !== "html") {
@@ -125,24 +130,15 @@ export function EmailViewer({ className }: EmailViewerProps) {
       }
 
       // Replace CID references with placeholder or remove problematic images
-      let processedContent = content
-        // Replace cid: image sources with a placeholder or remove them
+      const processedContent = content
         .replace(/src=["']cid:[^"']*["']/gi, 'src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSA5LTYgNi02LTYiIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+" alt="[Image not available]"')
-        // Also handle background-image CSS properties with cid references
         .replace(/background-image:\s*url\(["']?cid:[^"')]*["']?\)/gi, 'background-image: none')
-        // Remove any remaining cid: references in other attributes
         .replace(/cid:[^"'\s>]*/gi, '#')
 
       return processedContent
-    } catch (error) {
-      console.error("Error processing email content:", error)
-      return `<pre>${content}</pre>`
     }
-  }
 
-  // Sanitize HTML content
-  let sanitizedBody = ""
-  try {
+    // Sanitize HTML content
     const emailContent = selectedEmail?.body?.content || ""
     const emailContentType = selectedEmail?.body?.contentType || "text"
     
@@ -157,21 +153,30 @@ export function EmailViewer({ className }: EmailViewerProps) {
         ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "style"],
       }
     )
-  } catch (error) {
-    console.error("Error sanitizing email body:", error)
-    sanitizedBody = "<p>Error loading email content</p>"
-  }
 
-  // Format date
-  let formattedDate = ""
-  try {
+    // Format date
     formattedDate = format(
       new Date(selectedEmail.receivedDateTime),
       "EEEE, MMMM d, yyyy 'at' h:mm a"
     )
   } catch (error) {
-    console.error("Error formatting date:", error)
-    formattedDate = selectedEmail.receivedDateTime || ""
+    console.error("Error rendering email:", error)
+    renderError = error instanceof Error ? error.message : "Unknown error"
+  }
+
+  // Show error state if rendering failed
+  if (renderError) {
+    return (
+      <div className={cn("flex h-full items-center justify-center", className)}>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive opacity-50" />
+          <div>
+            <p className="text-sm font-medium">Error rendering email</p>
+            <p className="text-xs text-muted-foreground mt-1">{renderError}</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
