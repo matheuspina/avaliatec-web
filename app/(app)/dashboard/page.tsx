@@ -1,9 +1,52 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, Briefcase, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
 
-export default function DashboardPage() {
-  const todayEvents = [
+export default async function DashboardPage() {
+  const supabase = await createClient()
+
+  // Buscar estatísticas
+  const { data: clients } = await supabase.from('clients').select('*', { count: 'exact' })
+  const { data: projects } = await supabase.from('projects').select('*')
+  const { data: tasks } = await supabase.from('tasks').select('*')
+  const { data: activityLog } = await supabase
+    .from('activity_log')
+    .select('*, profiles(full_name)')
+    .order('created_at', { ascending: false })
+    .limit(3)
+
+  // Buscar eventos de hoje
+  const today = new Date().toISOString().split('T')[0]
+  const { data: eventsData } = await supabase
+    .from('events')
+    .select('*, clients(name), profiles(full_name)')
+    .eq('event_date', today)
+    .order('event_time', { ascending: true })
+
+  // Buscar projetos recentes
+  const { data: recentProjectsData } = await supabase
+    .from('projects')
+    .select('*, clients(name), project_statuses(name, color)')
+    .order('created_at', { ascending: false })
+    .limit(3)
+
+  // Calcular estatísticas
+  const totalClients = clients?.length || 0
+  const activeProjects = projects?.filter(p => p.status === 'active').length || 0
+  const completedProjects = projects?.filter(p => p.status === 'completed').length || 0
+  const pendingTasks = tasks?.filter(t => t.status !== 'done' && t.status !== 'in_progress').length || 0
+
+  const todayEvents = eventsData?.map(event => ({
+    id: event.id,
+    title: event.title,
+    description: event.description || '',
+    time: event.event_time?.substring(0, 5) || '',
+    location: event.location || '',
+    type: event.type,
+    client: event.clients ? { id: event.clients.id, name: event.clients.name } : null,
+    users: event.profiles ? [{ id: event.profiles.id, name: event.profiles.full_name }] : [],
+  })) || [
     {
       id: "1",
       title: "Reunião com Cliente ABC",
@@ -67,57 +110,52 @@ export default function DashboardPage() {
   const stats = [
     {
       title: "Total de Clientes",
-      value: "48",
+      value: totalClients.toString(),
       icon: Users,
-      description: "+12% em relação ao mês anterior",
+      description: `${totalClients} ${totalClients === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}`,
       color: "text-blue-500",
     },
     {
       title: "Projetos Ativos",
-      value: "23",
+      value: activeProjects.toString(),
       icon: Briefcase,
-      description: "8 em andamento, 5 em espera",
+      description: `${activeProjects} ${activeProjects === 1 ? 'projeto em andamento' : 'projetos em andamento'}`,
       color: "text-primary",
     },
     {
       title: "Projetos Concluídos",
-      value: "142",
+      value: completedProjects.toString(),
       icon: CheckCircle2,
       description: "Total acumulado",
       color: "text-green-500",
     },
     {
       title: "Tarefas Pendentes",
-      value: "17",
+      value: pendingTasks.toString(),
       icon: Clock,
-      description: "5 com prazo próximo",
+      description: `${pendingTasks} ${pendingTasks === 1 ? 'tarefa pendente' : 'tarefas pendentes'}`,
       color: "text-orange-500",
     },
   ]
 
-  const recentProjects = [
-    {
-      code: "AV-2024-001",
-      title: "Avaliação Imóvel Comercial",
-      client: "Empresa ABC Ltda",
-      status: "Em andamento",
-      deadline: "2024-11-15",
-    },
-    {
-      code: "AV-2024-002",
-      title: "Laudo Técnico Industrial",
-      client: "Indústria XYZ S.A.",
-      status: "Em espera",
-      deadline: "2024-11-20",
-    },
-    {
-      code: "AV-2024-003",
-      title: "Avaliação Patrimonial",
-      client: "Construtora Delta",
-      status: "Planejamento",
-      deadline: "2024-11-18",
-    },
-  ]
+  const getStatusLabel = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'planning': 'Planejamento',
+      'active': 'Em andamento',
+      'on_hold': 'Em espera',
+      'completed': 'Concluído',
+      'cancelled': 'Cancelado',
+    }
+    return statusMap[status] || status
+  }
+
+  const recentProjects = recentProjectsData?.map(project => ({
+    code: project.code || '',
+    title: project.name,
+    client: project.clients?.name || 'Sem cliente',
+    status: getStatusLabel(project.status),
+    deadline: project.end_date || '',
+  })) || []
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -251,42 +289,66 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Projeto concluído</p>
-                  <p className="text-xs text-muted-foreground">
-                    AV-2024-001 foi marcado como concluído
-                  </p>
-                  <p className="text-xs text-muted-foreground">Há 2 horas</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10">
-                  <Users className="h-4 w-4 text-blue-500" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Novo cliente cadastrado</p>
-                  <p className="text-xs text-muted-foreground">
-                    Empresa ABC Ltda foi adicionada
-                  </p>
-                  <p className="text-xs text-muted-foreground">Há 5 horas</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/10">
-                  <Clock className="h-4 w-4 text-orange-500" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Prazo próximo</p>
-                  <p className="text-xs text-muted-foreground">
-                    Projeto AV-2024-003 vence em 3 dias
-                  </p>
-                  <p className="text-xs text-muted-foreground">Ontem</p>
-                </div>
-              </div>
+              {activityLog && activityLog.length > 0 ? (
+                activityLog.map((activity) => {
+                  const getActivityIcon = (action: string) => {
+                    if (action.includes('completed') || action.includes('updated')) return CheckCircle2
+                    if (action.includes('created')) return Users
+                    return Clock
+                  }
+                  
+                  const getActivityColor = (action: string) => {
+                    if (action.includes('completed') || action.includes('updated')) return 'primary'
+                    if (action.includes('created')) return 'blue-500'
+                    return 'orange-500'
+                  }
+
+                  const getActivityLabel = (action: string) => {
+                    const actionMap: Record<string, string> = {
+                      'task_created': 'Tarefa criada',
+                      'task_updated': 'Tarefa atualizada',
+                      'project_created': 'Projeto criado',
+                      'project_updated': 'Projeto atualizado',
+                      'client_created': 'Cliente cadastrado',
+                      'client_updated': 'Cliente atualizado',
+                    }
+                    return actionMap[action] || action
+                  }
+
+                  const getTimeAgo = (date: string) => {
+                    const now = new Date()
+                    const activityDate = new Date(date)
+                    const diffMs = now.getTime() - activityDate.getTime()
+                    const diffMins = Math.floor(diffMs / 60000)
+                    const diffHours = Math.floor(diffMs / 3600000)
+                    const diffDays = Math.floor(diffMs / 86400000)
+
+                    if (diffMins < 60) return `Há ${diffMins} ${diffMins === 1 ? 'minuto' : 'minutos'}`
+                    if (diffHours < 24) return `Há ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`
+                    return `Há ${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`
+                  }
+
+                  const Icon = getActivityIcon(activity.action)
+                  const color = getActivityColor(activity.action)
+
+                  return (
+                    <div key={activity.id} className="flex gap-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-${color}/10`}>
+                        <Icon className={`h-4 w-4 text-${color}`} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">{getActivityLabel(activity.action)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {activity.profiles?.full_name || 'Sistema'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{getTimeAgo(activity.created_at)}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+              )}
             </div>
           </CardContent>
         </Card>

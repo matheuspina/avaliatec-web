@@ -63,6 +63,7 @@ export type ClientSummaryTask = {
   title: string
   status: string | null
   statusKey?: string | null
+  statusColor?: string | null
   deadline: string | null
   project_id: string | null
   project_title: string | null
@@ -90,8 +91,16 @@ export async function getClientSummary(clientId: string): Promise<{ data: Client
     .eq("projects.client_id", clientId)
     .order("updated_at", { ascending: false })
 
-  const [{ data: clientData, error: clientError }, { data: projectsData, error: projectsError }, { data: tasksData, error: tasksError }] =
-    await Promise.all([clientPromise, projectsPromise, tasksPromise])
+  const columnsPromise = supabase
+    .from("kanban_columns")
+    .select("status_key, name, color")
+
+  const [
+    { data: clientData, error: clientError },
+    { data: projectsData, error: projectsError },
+    { data: tasksData, error: tasksError },
+    { data: columnsData, error: columnsError },
+  ] = await Promise.all([clientPromise, projectsPromise, tasksPromise, columnsPromise])
 
   if (clientError) {
     return { data: null, error: clientError.message }
@@ -108,6 +117,20 @@ export async function getClientSummary(clientId: string): Promise<{ data: Client
   if (tasksError) {
     return { data: null, error: tasksError.message }
   }
+
+  if (columnsError) {
+    return { data: null, error: columnsError.message }
+  }
+
+  const columnMap = Object.fromEntries(
+    (columnsData ?? []).map((column: any) => [
+      column.status_key,
+      {
+        title: (column.name ?? column.title) as string | null,
+        color: column.color as string | null,
+      },
+    ])
+  )
 
   const projects = (projectsData ?? []).map((project: any) => ({
     id: project.id,
@@ -135,8 +158,9 @@ export async function getClientSummary(clientId: string): Promise<{ data: Client
   const tasks = (tasksData ?? []).map((task: any) => ({
     id: task.id,
     title: task.title,
-    status: mapTaskStatusToUI(task.status),
+    status: mapTaskStatusToUI(task.status) ?? columnMap[task.status ?? ""]?.title ?? null,
     statusKey: task.status ?? null,
+    statusColor: columnMap[task.status ?? ""]?.color ?? null,
     deadline: task.deadline ?? null,
     project_id: task.project_id ?? null,
     project_title: task.projects?.name ?? null,

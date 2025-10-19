@@ -745,7 +745,11 @@ export default function ClientesPage() {
                             </TableCell>
                             <TableCell>
                               {task.status ? (
-                                <Badge variant="outline" className="capitalize">
+                                <Badge
+                                  variant="outline"
+                                  className="capitalize"
+                                  style={getStatusBadgeStyle(task.statusColor)}
+                                >
                                   {task.status}
                                 </Badge>
                               ) : (
