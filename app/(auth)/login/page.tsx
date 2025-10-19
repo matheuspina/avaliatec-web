@@ -58,7 +58,7 @@ function LoginContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "azure",
         options: {
-          scopes: "email",
+          scopes: "email Mail.Read Mail.ReadWrite offline_access",
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
