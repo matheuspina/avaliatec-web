@@ -86,7 +86,7 @@ function EmailContent() {
           <div>
             <h2 className="text-lg font-semibold">No folders found</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              We couldn't find any email folders in your mailbox. Please try refreshing or check your email account settings.
+              We couldn&apos;t find any email folders in your mailbox. Please try refreshing or check your email account settings.
             </p>
           </div>
           <Button onClick={refreshFolders}>
@@ -114,7 +114,7 @@ function EmailContent() {
           </Button>
           <h2 className="text-sm font-medium">Email</h2>
         </div>
-        
+
         {/* Email Viewer */}
         <div className="flex-1 overflow-hidden">
           <EmailViewer />
@@ -130,7 +130,7 @@ function EmailContent() {
       <div className="hidden md:block">
         <FolderSidebar />
       </div>
-      
+
       {/* Main Content - Email List and Viewer */}
       <div className="flex flex-1 overflow-hidden">
         {/* Email List Panel */}
@@ -144,18 +144,18 @@ function EmailContent() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] p-0">
-                <FolderSidebar 
-                  className="border-0" 
-                  onFolderSelect={() => setMobileDrawerOpen(false)} 
+                <FolderSidebar
+                  className="border-0"
+                  onFolderSelect={() => setMobileDrawerOpen(false)}
                 />
               </SheetContent>
             </Sheet>
             <h1 className="text-lg font-semibold">Email</h1>
           </div>
-          
+
           <EmailListPanel onEmailSelect={() => setShowMobileViewer(true)} />
         </div>
-        
+
         {/* Desktop: Email Viewer */}
         <div className="hidden md:block flex-1">
           <EmailViewer />
