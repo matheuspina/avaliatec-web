@@ -180,9 +180,9 @@ export function EmailViewer({ className }: EmailViewerProps) {
   }
 
   return (
-    <div className={cn("flex h-full flex-col", className)}>
+    <div className={cn("flex h-full flex-col overflow-hidden", className)}>
       {/* Email Header */}
-      <div className="border-b bg-background p-6">
+      <div className="border-b bg-background p-6 shrink-0">
         {/* Subject */}
         <h1 className="text-2xl font-semibold">
           {selectedEmail.subject || "(No subject)"}

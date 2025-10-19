@@ -157,8 +157,8 @@ function EmailContent() {
         </div>
 
         {/* Desktop: Email Viewer */}
-        <div className="hidden md:flex flex-1">
-          <EmailViewer />
+        <div className="hidden md:block flex-1 overflow-hidden">
+          <EmailViewer className="h-full" />
         </div>
       </div>
 
