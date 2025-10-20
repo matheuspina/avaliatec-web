@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Protected } from "@/components/protected"
+import { usePermissions } from "@/contexts/permission-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -88,6 +90,7 @@ type AddressSuggestion = {
 
 export default function ClientesPage() {
   const { toast } = useToast()
+  const { hasPermission } = usePermissions()
   const [clients, setClients] = useState<Client[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
@@ -376,13 +379,14 @@ export default function ClientesPage() {
             Gerencie seus clientes cadastrados
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Cliente
-            </Button>
-          </DialogTrigger>
+        <Protected section="clientes" action="create">
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Cliente
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Novo Cliente</DialogTitle>
@@ -463,6 +467,7 @@ export default function ClientesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </Protected>
       </div>
 
       <Card>
@@ -504,12 +509,16 @@ export default function ClientesPage() {
                       <Button variant="ghost" size="icon" onClick={() => openViewClient(client)} aria-label="Ver detalhes do cliente">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(client)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => requestDeleteClient(client)} aria-label="Excluir cliente">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Protected section="clientes" action="edit">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(client)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Protected>
+                      <Protected section="clientes" action="delete">
+                        <Button variant="ghost" size="icon" onClick={() => requestDeleteClient(client)} aria-label="Excluir cliente">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Protected>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/input"
 import { Plus, Calendar, User, Trash2, Check, X, GripVertical, FolderKanban } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { TaskModal } from "@/components/kanban/task-modal"
+import { Protected } from "@/components/protected"
+import { usePermissions } from "@/contexts/permission-context"
 import { listTasks, moveTask, updateTask, createTask, deleteTask } from "@/lib/data/tasks"
 import {
   listKanbanColumns,
@@ -152,6 +154,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
 
 export default function TarefasPage() {
   const { toast } = useToast()
+  const { hasPermission } = usePermissions()
   const [columns, setColumns] = useState<Column[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingColumns, setLoadingColumns] = useState(true)
@@ -682,10 +685,12 @@ export default function TarefasPage() {
             Gerencie tarefas com quadro de tarefas
           </p>
         </div>
-        <Button variant="outline" onClick={handleAddColumn}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Coluna
-        </Button>
+        <Protected section="kanban" action="create">
+          <Button variant="outline" onClick={handleAddColumn}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Coluna
+          </Button>
+        </Protected>
       </div>
 
       {/* Filtro de Projeto */}
@@ -831,14 +836,16 @@ export default function TarefasPage() {
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary">{columnTasks.length}</Badge>
                             {columns.length > 1 && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => handleDeleteColumn(column.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <Protected section="kanban" action="delete">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => handleDeleteColumn(column.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </Protected>
                             )}
                           </div>
                         </>
@@ -896,14 +903,16 @@ export default function TarefasPage() {
                             </CardContent>
                           </Card>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-muted-foreground hover:text-foreground"
-                            onClick={() => handleStartAddTask(column.id)}
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Adicionar um cartão
-                          </Button>
+                          <Protected section="kanban" action="create">
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start text-muted-foreground hover:text-foreground"
+                              onClick={() => handleStartAddTask(column.id)}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Adicionar um cartão
+                            </Button>
+                          </Protected>
                         )}
                       </ColumnDropZone>
                     </SortableContext>

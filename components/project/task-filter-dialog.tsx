@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { type TaskFilters, type Profile, listProfiles } from "@/lib/data/tasks"
 import { type KanbanColumn, listKanbanColumns } from "@/lib/data/kanban-columns"
+import { usePermissions } from "@/contexts/permission-context"
 
 interface TaskFilterDialogProps {
   filters: TaskFilters
@@ -29,10 +30,15 @@ interface TaskFilterDialogProps {
 }
 
 export function TaskFilterDialog({ filters, onFiltersChange }: TaskFilterDialogProps) {
+  const { hasPermission } = usePermissions()
   const [isOpen, setIsOpen] = useState(false)
   const [localFilters, setLocalFilters] = useState<TaskFilters>(filters)
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [columns, setColumns] = useState<KanbanColumn[]>([])
+
+  // Note: Content filtering is enforced by RLS policies at the database level.
+  // Users will only see tasks they have access to based on their permissions.
+  // This filter dialog allows further refinement of the already-filtered results.
 
   useEffect(() => {
     async function loadOptions() {
@@ -96,7 +102,7 @@ export function TaskFilterDialog({ filters, onFiltersChange }: TaskFilterDialogP
         <DialogHeader>
           <DialogTitle>Filtrar Tarefas</DialogTitle>
           <DialogDescription>
-            Combine múltiplos filtros para refinar a lista de tarefas
+            Combine múltiplos filtros para refinar a lista de tarefas. Você visualiza apenas as tarefas às quais tem acesso.
           </DialogDescription>
         </DialogHeader>
 

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, type ComponentProps, type CSSProperti
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Protected } from "@/components/protected"
+import { usePermissions } from "@/contexts/permission-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -50,6 +52,7 @@ type ClientOption = { id: string; name: string }
 export default function ProjetosPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { hasPermission } = usePermissions()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -213,13 +216,14 @@ export default function ProjetosPage() {
             Gerencie seus projetos e demandas
           </p>
         </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Projeto
-            </Button>
-          </DialogTrigger>
+        <Protected section="projetos" action="create">
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Projeto
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Novo Projeto</DialogTitle>
@@ -262,6 +266,7 @@ export default function ProjetosPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </Protected>
       </div>
 
       <Card>

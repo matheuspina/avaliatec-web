@@ -1,7 +1,11 @@
+'use client'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon"
+import { usePermissions } from "@/contexts/permission-context"
 
 export default function AtendimentoPage() {
+  const { hasPermission } = usePermissions()
   return (
     <div className="space-y-6">
       <div>

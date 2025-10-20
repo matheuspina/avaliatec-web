@@ -118,11 +118,18 @@ export async function createProject(input: {
   clientId: string;
   status?: string;
   endDate: string | null; // ISO date string
+  teamMembers?: string[]; // Array of user IDs
 }): Promise<Project> {
   const supabase = createClient();
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
   if (!userId) throw new Error("Usuário não autenticado");
+
+  // Include creator in team_members by default
+  const teamMembers = input.teamMembers ?? [];
+  if (!teamMembers.includes(userId)) {
+    teamMembers.push(userId);
+  }
 
   const payload: any = {
     code: input.code,
@@ -132,6 +139,7 @@ export async function createProject(input: {
     status: mapUIStatusToDb(input.status) ?? "planning",
     end_date: input.endDate ?? null,
     created_by: userId,
+    team_members: teamMembers,
   };
 
   const { data, error } = await supabase
@@ -144,7 +152,7 @@ export async function createProject(input: {
   return data as Project;
 }
 
-export async function updateProject(id: string, changes: Partial<Project>): Promise<Project> {
+export async function updateProject(id: string, changes: Partial<Project & { team_members?: string[] }>): Promise<Project> {
   const supabase = createClient();
   const payload: any = { ...changes };
   if (typeof changes.status === "string") {
@@ -181,6 +189,7 @@ export type ProjectDetails = {
   budget: string | null;
   progress: number | null;
   color: string | null;
+  teamMembers: string[]; // Array of user IDs
   client: {
     id: string;
     name: string;
@@ -284,6 +293,7 @@ export async function getProjectDetails(projectId: string): Promise<ProjectDetai
     budget: project.budget,
     progress: project.progress,
     color: project.color,
+    teamMembers: project.team_members ?? [],
     client: project.clients
       ? {
           id: project.clients.id,
@@ -447,5 +457,61 @@ export async function updateProjectMemberRole(projectId: string, userId: string,
     .update({ role })
     .eq("project_id", projectId)
     .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function updateProjectTeamMembers(projectId: string, teamMembers: string[]): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("projects")
+    .update({ team_members: teamMembers })
+    .eq("id", projectId);
+  if (error) throw error;
+}
+
+export async function addTeamMember(projectId: string, userId: string): Promise<void> {
+  const supabase = createClient();
+  
+  // Get current team members
+  const { data: project, error: fetchError } = await supabase
+    .from("projects")
+    .select("team_members")
+    .eq("id", projectId)
+    .single();
+  
+  if (fetchError) throw fetchError;
+  
+  const currentMembers = project.team_members || [];
+  if (!currentMembers.includes(userId)) {
+    const updatedMembers = [...currentMembers, userId];
+    const { error } = await supabase
+      .from("projects")
+      .update({ team_members: updatedMembers })
+      .eq("id", projectId);
+    
+    if (error) throw error;
+  }
+}
+
+export async function removeTeamMember(projectId: string, userId: string): Promise<void> {
+  const supabase = createClient();
+  
+  // Get current team members
+  const { data: project, error: fetchError } = await supabase
+    .from("projects")
+    .select("team_members")
+    .eq("id", projectId)
+    .single();
+  
+  if (fetchError) throw fetchError;
+  
+  const currentMembers = project.team_members || [];
+  const updatedMembers = currentMembers.filter((id: string) => id !== userId);
+  
+  const { error } = await supabase
+    .from("projects")
+    .update({ team_members: updatedMembers })
+    .eq("id", projectId);
+  
   if (error) throw error;
 }

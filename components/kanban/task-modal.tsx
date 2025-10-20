@@ -44,6 +44,7 @@ import {
 import { listProjects, type ProjectListItem } from "@/lib/data/projects"
 import { ProjectTag } from "@/components/ui/project-tag"
 import { useToast } from "@/hooks/use-toast"
+import { usePermissions } from "@/contexts/permission-context"
 
 type Task = {
   id: string
@@ -83,7 +84,14 @@ interface TaskModalProps {
 
 export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate, onDelete }: TaskModalProps) {
   const { toast } = useToast()
+  const { hasPermission } = usePermissions()
   const [editedTask, setEditedTask] = useState<Task | null>(task)
+  
+  // Check permissions
+  const canEdit = hasPermission('kanban', 'edit')
+  const canDelete = hasPermission('kanban', 'delete')
+  const canCreate = hasPermission('kanban', 'create')
+  const isReadOnly = !canEdit && !canCreate
 
   // Suportar ambas as interfaces (isOpen/onClose e open/onOpenChange)
   const modalOpen = isOpen ?? open ?? false
@@ -400,7 +408,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div className="flex-1">
-            {isEditingTitle ? (
+            {isEditingTitle && canEdit ? (
               <Input
                 value={editedTask.title}
                 onChange={(e) =>
@@ -424,92 +432,96 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
               />
             ) : (
               <DialogTitle
-                className="text-2xl cursor-pointer hover:text-primary transition-colors"
-                onClick={() => setIsEditingTitle(true)}
+                className={`text-2xl ${canEdit ? 'cursor-pointer hover:text-primary' : ''} transition-colors`}
+                onClick={() => canEdit && setIsEditingTitle(true)}
               >
                 {editedTask.title}
               </DialogTitle>
             )}
           </div>
-          {showDeleteConfirm ? (
-            <div className="flex gap-2">
+          {canDelete && (
+            showDeleteConfirm ? (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDelete}
+                >
+                  Confirmar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
               <Button
                 size="sm"
-                variant="destructive"
-                onClick={handleDelete}
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(true)}
               >
-                Confirmar
+                <Trash2 className="h-4 w-4 mr-2" />
+                Deletar
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancelar
-              </Button>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Deletar
-            </Button>
+            )
           )}
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Botões de ação */}
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setShowLabelsSection(true)
-                requestAnimationFrame(() => labelsInputRef.current?.focus())
-              }}
-            >
-              <Tag className="mr-2 h-4 w-4" />
-              Etiquetas
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDateSection(true)}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Datas
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setShowChecklistSection(true)
-                requestAnimationFrame(() => checklistInputRef.current?.focus())
-              }}
-            >
-              <CheckSquare className="mr-2 h-4 w-4" />
-              Checklist
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowProjectSection(true)}
-            >
-              <FolderKanban className="mr-2 h-4 w-4" />
-              Projeto
-            </Button>
-            <Button variant="outline" size="sm">
-              <Users className="mr-2 h-4 w-4" />
-              Membros
-            </Button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowLabelsSection(true)
+                  requestAnimationFrame(() => labelsInputRef.current?.focus())
+                }}
+              >
+                <Tag className="mr-2 h-4 w-4" />
+                Etiquetas
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDateSection(true)}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Datas
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowChecklistSection(true)
+                  requestAnimationFrame(() => checklistInputRef.current?.focus())
+                }}
+              >
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Checklist
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowProjectSection(true)}
+              >
+                <FolderKanban className="mr-2 h-4 w-4" />
+                Projeto
+              </Button>
+              <Button variant="outline" size="sm">
+                <Users className="mr-2 h-4 w-4" />
+                Membros
+              </Button>
+            </div>
+          )}
 
           {/* Descrição */}
           <div className="space-y-2">
@@ -523,8 +535,9 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                 setEditedTask({ ...editedTask, description: e.target.value })
               }
               onBlur={handleUpdate}
-              placeholder="Adicione uma descrição mais detalhada..."
+              placeholder={isReadOnly ? "" : "Adicione uma descrição mais detalhada..."}
               className="min-h-[100px]"
+              disabled={isReadOnly}
             />
           </div>
 
@@ -538,27 +551,31 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
               {editedTask.labels?.map((label) => (
                 <Badge key={label} variant="secondary" className="gap-1">
                   {label}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => handleRemoveLabel(label)}
-                  />
+                  {!isReadOnly && (
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => handleRemoveLabel(label)}
+                    />
+                  )}
                 </Badge>
               ))}
-              <div className="flex gap-2">
-                <Input
-                  value={newLabel}
-                  onChange={(e) => setNewLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddLabel()
-                  }}
-                  placeholder="Nova etiqueta"
-                  className="h-7 w-32 text-sm"
-                  ref={labelsInputRef}
-                />
-                <Button size="sm" variant="ghost" onClick={handleAddLabel}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              {!isReadOnly && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddLabel()
+                    }}
+                    placeholder="Nova etiqueta"
+                    className="h-7 w-32 text-sm"
+                    ref={labelsInputRef}
+                  />
+                  <Button size="sm" variant="ghost" onClick={handleAddLabel}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           )}
@@ -577,6 +594,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                   setEditedTask({ ...editedTask, deadline: e.target.value })
                 }
                 onBlur={handleUpdate}
+                disabled={isReadOnly}
               />
             </div>
             <div className="space-y-2">
@@ -590,6 +608,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                   setEditedTask({ ...editedTask, assignee: e.target.value })
                 }
                 onBlur={handleUpdate}
+                disabled={isReadOnly}
               />
             </div>
           </div>
@@ -610,34 +629,36 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                   projectColor={editedTask.project.color}
                   size="sm"
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    if (!editedTask.id) return
-                    try {
-                      await updateTask(editedTask.id, { project_id: null })
-                      setEditedTask({ ...editedTask, project: null })
-                      setShowProjectSection(false)
-                      if (onUpdate) {
-                        onUpdate({ ...editedTask, project: null })
+                {!isReadOnly && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (!editedTask.id) return
+                      try {
+                        await updateTask(editedTask.id, { project_id: null })
+                        setEditedTask({ ...editedTask, project: null })
+                        setShowProjectSection(false)
+                        if (onUpdate) {
+                          onUpdate({ ...editedTask, project: null })
+                        }
+                        toast({
+                          title: "Projeto removido",
+                          description: "Tarefa desvinculada do projeto",
+                        })
+                      } catch (err) {
+                        console.error("Erro ao remover projeto:", err)
+                        toast({
+                          title: "Erro ao remover projeto",
+                          description: "Não foi possível desvincular a tarefa",
+                          variant: "destructive",
+                        })
                       }
-                      toast({
-                        title: "Projeto removido",
-                        description: "Tarefa desvinculada do projeto",
-                      })
-                    } catch (err) {
-                      console.error("Erro ao remover projeto:", err)
-                      toast({
-                        title: "Erro ao remover projeto",
-                        description: "Não foi possível desvincular a tarefa",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ) : (
               <Select
@@ -672,6 +693,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                     })
                   }
                 }}
+                disabled={isReadOnly}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar projeto" />
@@ -716,6 +738,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                       checked={item.completed}
                       onChange={() => handleToggleChecklistItem(item.id)}
                       className="h-4 w-4"
+                      disabled={isReadOnly}
                     />
                     <span
                       className={`flex-1 ${
@@ -724,36 +747,40 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                     >
                       {item.text}
                     </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={() => handleRemoveChecklistItem(item.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {!isReadOnly && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="opacity-0 group-hover:opacity-100"
+                        onClick={() => handleRemoveChecklistItem(item.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 ))
               )}
-              <div className="flex gap-2">
-                <Input
-                  value={newChecklistItem}
-                  onChange={(e) => setNewChecklistItem(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddChecklistItem()
-                  }}
-                  placeholder="Adicionar item"
-                  className="h-8 text-sm"
-                  ref={checklistInputRef}
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleAddChecklistItem}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              {!isReadOnly && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddChecklistItem()
+                    }}
+                    placeholder="Adicionar item"
+                    className="h-8 text-sm"
+                    ref={checklistInputRef}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleAddChecklistItem}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           )}
@@ -811,24 +838,26 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                             {new Date(comment.created_at).toLocaleString("pt-BR")}
                           </span>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleEditComment(comment)}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleDeleteComment(comment.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        {!isReadOnly && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleEditComment(comment)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleDeleteComment(comment.id)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       {editingCommentId === comment.id ? (
                         <div className="space-y-2">
@@ -856,20 +885,22 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
             </div>
 
             {/* Adicionar comentário */}
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-                MP
+            {!isReadOnly && (
+              <div className="flex gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                  MP
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Escrever um comentário..."
+                    className="min-h-[80px]"
+                  />
+                  <Button onClick={handleAddComment}>Comentar</Button>
+                </div>
               </div>
-              <div className="flex-1 space-y-2">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Escrever um comentário..."
-                  className="min-h-[80px]"
-                />
-                <Button onClick={handleAddComment}>Comentar</Button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </DialogContent>

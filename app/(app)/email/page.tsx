@@ -8,8 +8,10 @@ import { EmailViewer } from "@/components/email/email-viewer"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { AlertCircle, RefreshCw, Mail, Menu, ArrowLeft } from "lucide-react"
+import { usePermissions } from "@/contexts/permission-context"
 
 function EmailContent() {
+  const { hasPermission } = usePermissions()
   const { loading, error, clearError, refreshFolders, folders, selectedEmail } = useEmail()
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [showMobileViewer, setShowMobileViewer] = useState(false)

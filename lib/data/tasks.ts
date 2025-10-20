@@ -8,6 +8,7 @@ export type KanbanTask = {
   deadline: string | null // ISO date YYYY-MM-DD
   assignee: string // full_name
   assigneeId: string | null // profile id
+  watchers: string[] // Array of user IDs
   labels?: string[]
   createdAt: string // ISO date
   project?: {
@@ -38,7 +39,7 @@ export async function listTasks(params?: TaskFilters): Promise<KanbanTask[]> {
   let query = supabase
     .from("tasks")
     .select(
-      `id, title, description, status, deadline, labels, assigned_to, project_id, created_at,
+      `id, title, description, status, deadline, labels, assigned_to, watchers, project_id, created_at,
        profiles:profiles!tasks_assigned_to_fkey(full_name),
        projects:project_id(id, name, code, color)`
     )
@@ -88,6 +89,7 @@ export async function listTasks(params?: TaskFilters): Promise<KanbanTask[]> {
       deadline: t.deadline ?? null,
       assignee: t.profiles?.full_name ?? "",
       assigneeId: t.assigned_to ?? null,
+      watchers: t.watchers ?? [],
       labels: t.labels ?? [],
       createdAt: t.created_at ?? "",
       project: t.projects
@@ -118,10 +120,21 @@ export async function createTask(input: {
   deadline?: string | null // YYYY-MM-DD
   assigned_to?: string | null // profile id
   labels?: string[]
+  watchers?: string[] // Array of user IDs
 }): Promise<string> {
   const supabase = createClient()
   const { data: userRes } = await supabase.auth.getUser()
   const userId = userRes.user?.id
+  
+  // Include creator and assigned user in watchers by default
+  const watchers = input.watchers ?? []
+  if (userId && !watchers.includes(userId)) {
+    watchers.push(userId)
+  }
+  if (input.assigned_to && !watchers.includes(input.assigned_to)) {
+    watchers.push(input.assigned_to)
+  }
+  
   const payload: any = {
     title: input.title,
     description: input.description ?? null,
@@ -130,6 +143,7 @@ export async function createTask(input: {
     deadline: input.deadline ?? null,
     assigned_to: input.assigned_to ?? null,
     labels: input.labels ?? [],
+    watchers: watchers,
     created_by: userId ?? null,
   }
   const { data, error } = await supabase.from("tasks").insert(payload).select("id").single()
@@ -147,6 +161,7 @@ export async function updateTask(
     assigned_to: string | null
     labels: string[]
     project_id: string | null
+    watchers: string[]
   }>
 ): Promise<void> {
   const supabase = createClient()
@@ -233,4 +248,60 @@ export async function listProfiles(): Promise<Profile[]> {
     email: p.email ?? "",
     avatarUrl: p.avatar_url ?? null,
   }))
+}
+
+export async function addWatcher(taskId: string, userId: string): Promise<void> {
+  const supabase = createClient()
+  
+  // Get current watchers
+  const { data: task, error: fetchError } = await supabase
+    .from("tasks")
+    .select("watchers")
+    .eq("id", taskId)
+    .single()
+  
+  if (fetchError) throw fetchError
+  
+  const currentWatchers = task.watchers || []
+  if (!currentWatchers.includes(userId)) {
+    const updatedWatchers = [...currentWatchers, userId]
+    const { error } = await supabase
+      .from("tasks")
+      .update({ watchers: updatedWatchers })
+      .eq("id", taskId)
+    
+    if (error) throw error
+  }
+}
+
+export async function removeWatcher(taskId: string, userId: string): Promise<void> {
+  const supabase = createClient()
+  
+  // Get current watchers
+  const { data: task, error: fetchError } = await supabase
+    .from("tasks")
+    .select("watchers")
+    .eq("id", taskId)
+    .single()
+  
+  if (fetchError) throw fetchError
+  
+  const currentWatchers = task.watchers || []
+  const updatedWatchers = currentWatchers.filter((id: string) => id !== userId)
+  
+  const { error } = await supabase
+    .from("tasks")
+    .update({ watchers: updatedWatchers })
+    .eq("id", taskId)
+  
+  if (error) throw error
+}
+
+export async function updateTaskWatchers(taskId: string, watchers: string[]): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from("tasks")
+    .update({ watchers })
+    .eq("id", taskId)
+  if (error) throw error
 }

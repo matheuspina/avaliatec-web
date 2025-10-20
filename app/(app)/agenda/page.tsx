@@ -9,6 +9,8 @@ import { Plus, Clock, MapPin, Trash2 } from "lucide-react"
 import { EventFormDialog } from "@/components/events/event-form-dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { listEventsByDate, createEvent, updateEvent, deleteEvent } from "@/lib/data/events"
+import { Protected } from "@/components/protected"
+import { usePermissions } from "@/contexts/permission-context"
 
 type User = {
   id: string
@@ -33,6 +35,7 @@ type Event = {
 }
 
 export default function AgendaPage() {
+  const { hasPermission } = usePermissions()
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
@@ -166,10 +169,12 @@ export default function AgendaPage() {
             Gerencie seus compromissos e prazos
           </p>
         </div>
-        <Button onClick={handleNewEvent}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Evento
-        </Button>
+        <Protected section="agenda" action="create">
+          <Button onClick={handleNewEvent}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Evento
+          </Button>
+        </Protected>
       </div>
 
       <ConfirmDialog
@@ -279,17 +284,19 @@ export default function AgendaPage() {
                           <Badge variant={getEventTypeColor(event.type)}>
                             {getEventTypeLabel(event.type)}
                           </Badge>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteEvent(event.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Protected section="agenda" action="delete">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteEvent(event.id)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </Protected>
                         </div>
                       </div>
                     </CardHeader>

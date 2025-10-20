@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react"
+import Link from "next/link"
+import { Plus, Pencil, Trash2, GripVertical, Users } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -9,6 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Protected } from "@/components/protected"
+import { usePermissions } from "@/contexts/permission-context"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +30,7 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function ConfiguracoesPage() {
   const { toast } = useToast()
+  const { hasPermission, currentUser } = usePermissions()
   const [statuses, setStatuses] = useState<ProjectStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -36,6 +40,26 @@ export default function ConfiguracoesPage() {
     color: "#3B82F6",
     description: "",
   })
+
+  // Check if user is admin (has a group named "Administrador")
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    async function checkAdmin() {
+      if (currentUser?.group_id) {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data: group } = await supabase
+          .from('user_groups')
+          .select('name')
+          .eq('id', currentUser.group_id)
+          .single()
+        
+        setIsAdmin(group?.name === 'Administrador')
+      }
+    }
+    checkAdmin()
+  }, [currentUser])
 
   const loadStatuses = useCallback(async () => {
     try {
@@ -163,6 +187,35 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="grid gap-6">
+        {/* User Management - Admin Only */}
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Gestão de Usuários
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie grupos, permissões e convites de usuários
+                  </CardDescription>
+                </div>
+                <Link href="/configuracoes/usuarios">
+                  <Button>
+                    Acessar Gestão de Usuários
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Configure grupos de usuários, defina permissões granulares e envie convites para novos membros da equipe.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Status de Projetos */}
         <Card>
           <CardHeader>

@@ -29,54 +29,105 @@ import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
+import { usePermissions } from "@/contexts/permission-context"
+import type { SectionKey } from "@/lib/types"
 
 const menuItems = [
   {
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    sectionKey: "dashboard" as SectionKey,
   },
   {
     title: "Clientes",
     href: "/clientes",
     icon: Users,
+    sectionKey: "clientes" as SectionKey,
   },
   {
     title: "Projetos",
     href: "/projetos",
     icon: Briefcase,
+    sectionKey: "projetos" as SectionKey,
   },
   {
     title: "Tarefas",
     href: "/kanban",
     icon: FolderKanban,
+    sectionKey: "kanban" as SectionKey,
   },
   {
     title: "Agenda",
     href: "/agenda",
     icon: Calendar,
+    sectionKey: "agenda" as SectionKey,
   },
   {
     title: "Atendimento",
     href: "/atendimento",
     icon: WhatsAppIcon,
+    sectionKey: "atendimento" as SectionKey,
   },
   {
     title: "Arquivos",
     href: "/arquivos",
     icon: FileText,
+    sectionKey: "arquivos" as SectionKey,
   },
   {
     title: "Email",
     href: "/email",
     icon: Mail,
+    sectionKey: "email" as SectionKey,
   },
   {
     title: "Configurações",
     href: "/configuracoes",
     icon: Settings,
+    sectionKey: "configuracoes" as SectionKey,
   },
 ]
+
+function SidebarSkeleton() {
+  return (
+    <Sidebar>
+      <SidebarHeader className="justify-center">
+        <div className="relative h-[4.5rem] w-[15rem]">
+          <Image
+            src="/logo-avaliatec.png"
+            alt="AvaliaTec"
+            fill
+            className="object-contain"
+            priority
+          />
+        </div>
+      </SidebarHeader>
+      <Separator />
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-md px-3 py-2"
+              >
+                <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+                <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -84,6 +135,7 @@ export function AppSidebar() {
   const { toast } = useToast()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const supabase = createClient()
+  const { permissions, isLoading } = usePermissions()
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -110,6 +162,16 @@ export function AppSidebar() {
     }
   }
 
+  // Filter menu items based on user's view permissions
+  const visibleMenuItems = menuItems.filter((item) => {
+    return permissions[item.sectionKey]?.view === true
+  })
+
+  // Show loading skeleton while permissions are being loaded
+  if (isLoading) {
+    return <SidebarSkeleton />
+  }
+
   return (
     <Sidebar>
       <SidebarHeader className="justify-center">
@@ -127,7 +189,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <SidebarMenuItem
                 key={item.href}
                 active={pathname === item.href}

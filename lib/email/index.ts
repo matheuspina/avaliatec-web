@@ -36,5 +36,11 @@ export {
   sendNotificationEmail
 } from './templates'
 
+// User invite templates
+export {
+  generateInviteEmail,
+  generateInviteReminderEmail
+} from './templates/user-invite'
+
 // Tipos
 export type { EmailOptions, EmailAttachment, EmailConfig, SendEmailResult } from './types'

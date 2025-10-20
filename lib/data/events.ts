@@ -9,6 +9,7 @@ export type CalendarEvent = {
   location: string
   type: "meeting" | "deadline" | "visit"
   client?: { id: string; name: string }
+  participants?: string[] // Array of user IDs
 }
 
 function toISODateString(d: Date): string {
@@ -39,6 +40,21 @@ export async function listEventsByDate(date: Date): Promise<CalendarEvent[]> {
 
   if (error) throw error
 
+  // Fetch participants for all events
+  const eventIds = (data ?? []).map((e: any) => e.id)
+  const { data: participantsData } = await supabase
+    .from("event_participants")
+    .select("event_id, user_id")
+    .in("event_id", eventIds)
+
+  const participantsMap = new Map<string, string[]>()
+  ;(participantsData ?? []).forEach((p: any) => {
+    if (!participantsMap.has(p.event_id)) {
+      participantsMap.set(p.event_id, [])
+    }
+    participantsMap.get(p.event_id)!.push(p.user_id)
+  })
+
   return (data ?? []).map((r: any) => ({
     id: r.id,
     title: r.title,
@@ -48,6 +64,7 @@ export async function listEventsByDate(date: Date): Promise<CalendarEvent[]> {
     location: r.location ?? "",
     type: r.type as CalendarEvent["type"],
     client: r.clients ? { id: r.clients.id, name: r.clients.name } : undefined,
+    participants: participantsMap.get(r.id) ?? [],
   }))
 }
 
@@ -60,6 +77,7 @@ export async function createEvent(input: {
   type: "meeting" | "deadline" | "visit"
   client_id?: string | null
   project_id?: string | null
+  participants?: string[] // Array of user IDs
 }): Promise<string> {
   const supabase = createClient()
   const { data: userRes } = await supabase.auth.getUser()
@@ -84,7 +102,31 @@ export async function createEvent(input: {
     .single()
 
   if (error) throw error
-  return data?.id as string
+  
+  const eventId = data?.id as string
+  
+  // Add participants
+  const participants = input.participants ?? []
+  if (userId && !participants.includes(userId)) {
+    participants.push(userId)
+  }
+  
+  if (participants.length > 0) {
+    const participantRecords = participants.map(uid => ({
+      event_id: eventId,
+      user_id: uid,
+    }))
+    
+    const { error: participantsError } = await supabase
+      .from("event_participants")
+      .insert(participantRecords)
+    
+    if (participantsError) {
+      console.error("Error adding participants:", participantsError)
+    }
+  }
+  
+  return eventId
 }
 
 export async function updateEvent(id: string, changes: Partial<{
@@ -96,9 +138,15 @@ export async function updateEvent(id: string, changes: Partial<{
   type: "meeting" | "deadline" | "visit"
   client_id: string | null
   project_id: string | null
+  participants: string[]
 }>): Promise<void> {
   const supabase = createClient()
   const payload: any = { ...changes }
+  
+  // Handle participants separately
+  const participants = payload.participants
+  delete payload.participants
+  
   if ("date" in payload) {
     payload.event_date = payload.date
     delete payload.date
@@ -109,10 +157,70 @@ export async function updateEvent(id: string, changes: Partial<{
   }
   const { error } = await supabase.from("events").update(payload).eq("id", id)
   if (error) throw error
+  
+  // Update participants if provided
+  if (participants !== undefined) {
+    await updateEventParticipants(id, participants)
+  }
 }
 
 export async function deleteEvent(id: string): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase.from("events").delete().eq("id", id)
   if (error) throw error
+}
+
+export async function addEventParticipant(eventId: string, userId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from("event_participants")
+    .insert({ event_id: eventId, user_id: userId })
+  if (error && error.code !== '23505') { // Ignore unique constraint violations
+    throw error
+  }
+}
+
+export async function removeEventParticipant(eventId: string, userId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from("event_participants")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+  if (error) throw error
+}
+
+export async function updateEventParticipants(eventId: string, participants: string[]): Promise<void> {
+  const supabase = createClient()
+  
+  // Delete all existing participants
+  await supabase
+    .from("event_participants")
+    .delete()
+    .eq("event_id", eventId)
+  
+  // Add new participants
+  if (participants.length > 0) {
+    const participantRecords = participants.map(uid => ({
+      event_id: eventId,
+      user_id: uid,
+    }))
+    
+    const { error } = await supabase
+      .from("event_participants")
+      .insert(participantRecords)
+    
+    if (error) throw error
+  }
+}
+
+export async function getEventParticipants(eventId: string): Promise<string[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from("event_participants")
+    .select("user_id")
+    .eq("event_id", eventId)
+  
+  if (error) throw error
+  return (data ?? []).map((p: any) => p.user_id)
 }

@@ -21,9 +21,16 @@ export async function listClients(search?: string): Promise<{ data: Client[]; er
   return { data: (data as Client[]) ?? [], error: error?.message ?? null }
 }
 
-export async function createClientRecord(payload: { name: string; document: string; email: string; phone: string; address: string; type?: Client['type'] }): Promise<{ data: Client | null; error: string | null }> {
+export async function createClientRecord(payload: { name: string; document: string; email: string; phone: string; address: string; type?: Client['type']; assigned_users?: string[] }): Promise<{ data: Client | null; error: string | null }> {
   const supabase = createSupabaseClient()
   const uid = await getCurrentUserId()
+  
+  // Include creator in assigned_users by default
+  const assignedUsers = payload.assigned_users ?? []
+  if (uid && !assignedUsers.includes(uid)) {
+    assignedUsers.push(uid)
+  }
+  
   const insertData = {
     name: payload.name,
     document: payload.document,
@@ -31,13 +38,14 @@ export async function createClientRecord(payload: { name: string; document: stri
     phone: payload.phone,
     address: payload.address,
     type: payload.type ?? 'company',
+    assigned_users: assignedUsers,
     created_by: uid,
   }
   const { data, error } = await supabase.from('clients').insert(insertData).select('*').single()
   return { data: (data as Client) ?? null, error: error?.message ?? null }
 }
 
-export async function updateClientRecord(id: string, payload: Partial<{ name: string; document: string; email: string; phone: string; address: string; type: Client['type']; notes: string | null }>): Promise<{ data: Client | null; error: string | null }> {
+export async function updateClientRecord(id: string, payload: Partial<{ name: string; document: string; email: string; phone: string; address: string; type: Client['type']; notes: string | null; assigned_users: string[] }>): Promise<{ data: Client | null; error: string | null }> {
   const supabase = createSupabaseClient()
   const { data, error } = await supabase.from('clients').update(payload).eq('id', id).select('*').single()
   return { data: (data as Client) ?? null, error: error?.message ?? null }
@@ -73,6 +81,68 @@ export type ClientSummary = {
   client: Client
   projects: ClientSummaryProject[]
   tasks: ClientSummaryTask[]
+}
+
+export async function addAssignedUser(clientId: string, userId: string): Promise<{ error: string | null }> {
+  const supabase = createSupabaseClient()
+  
+  // Get current assigned users
+  const { data: client, error: fetchError } = await supabase
+    .from('clients')
+    .select('assigned_users')
+    .eq('id', clientId)
+    .single()
+  
+  if (fetchError) return { error: fetchError.message }
+  
+  const currentUsers = client.assigned_users || []
+  if (!currentUsers.includes(userId)) {
+    const updatedUsers = [...currentUsers, userId]
+    const { error } = await supabase
+      .from('clients')
+      .update({ assigned_users: updatedUsers })
+      .eq('id', clientId)
+    
+    if (error) return { error: error.message }
+  }
+  
+  return { error: null }
+}
+
+export async function removeAssignedUser(clientId: string, userId: string): Promise<{ error: string | null }> {
+  const supabase = createSupabaseClient()
+  
+  // Get current assigned users
+  const { data: client, error: fetchError } = await supabase
+    .from('clients')
+    .select('assigned_users')
+    .eq('id', clientId)
+    .single()
+  
+  if (fetchError) return { error: fetchError.message }
+  
+  const currentUsers = client.assigned_users || []
+  const updatedUsers = currentUsers.filter((id: string) => id !== userId)
+  
+  const { error } = await supabase
+    .from('clients')
+    .update({ assigned_users: updatedUsers })
+    .eq('id', clientId)
+  
+  if (error) return { error: error.message }
+  
+  return { error: null }
+}
+
+export async function updateClientAssignedUsers(clientId: string, assignedUsers: string[]): Promise<{ error: string | null }> {
+  const supabase = createSupabaseClient()
+  const { error } = await supabase
+    .from('clients')
+    .update({ assigned_users: assignedUsers })
+    .eq('id', clientId)
+  
+  if (error) return { error: error.message }
+  return { error: null }
 }
 
 export async function getClientSummary(clientId: string): Promise<{ data: ClientSummary | null; error: string | null }> {

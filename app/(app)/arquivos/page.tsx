@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Protected } from "@/components/protected"
+import { usePermissions } from "@/contexts/permission-context"
 import {
   Table,
   TableBody,
@@ -34,6 +36,7 @@ type FileItem = {
 }
 
 export default function ArquivosPage() {
+  const { hasPermission } = usePermissions()
   const [files] = useState<FileItem[]>([
     {
       id: "1",
@@ -112,20 +115,22 @@ export default function ArquivosPage() {
             Gerencie documentos e arquivos do sistema
           </p>
         </div>
-        <div>
-          <Input
-            type="file"
-            id="file-upload"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <Button asChild disabled={uploading}>
-            <label htmlFor="file-upload" className="cursor-pointer">
-              <Upload className="mr-2 h-4 w-4" />
-              {uploading ? "Enviando..." : "Enviar Arquivo"}
-            </label>
-          </Button>
-        </div>
+        <Protected section="arquivos" action="create">
+          <div>
+            <Input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <Button asChild disabled={uploading}>
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <Upload className="mr-2 h-4 w-4" />
+                {uploading ? "Enviando..." : "Enviar Arquivo"}
+              </label>
+            </Button>
+          </div>
+        </Protected>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -234,9 +239,11 @@ export default function ArquivosPage() {
                       <Button variant="ghost" size="icon">
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Protected section="arquivos" action="delete">
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Protected>
                     </div>
                   </TableCell>
                 </TableRow>
