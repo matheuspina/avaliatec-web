@@ -1,13 +1,13 @@
 # Implementation Plan
 
-- [-] 1. Setup environment and database schema
+- [x] 1. Setup environment and database schema
   - Configure Evolution API environment variables in .env.local
   - Create Supabase migration for WhatsApp tables (instances, contacts, messages, quick_messages, instance_settings, auto_reply_log)
   - Apply migration and verify table creation
   - Create database indexes for performance optimization
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Implement Evolution API client service
+- [x] 2. Implement Evolution API client service
   - Create evolutionApiClient.ts with base configuration and authentication
   - Implement createInstance method with webhook configuration
   - Implement connectInstance and getConnectionState methods
@@ -17,7 +17,7 @@
   - Add error handling and retry logic for API calls
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.3, 2.6, 4.1, 4.2, 11.2, 11.6_
 
-- [ ] 3. Implement WhatsApp business service layer
+- [x] 3. Implement WhatsApp business service layer
   - Create whatsappService.ts with core business logic
   - Implement processIncomingMessage method for webhook data processing
   - Implement syncContact method to create/update contacts
@@ -28,7 +28,7 @@
   - Create availabilityChecker.ts utility for schedule validation
   - _Requirements: 3.1, 3.2, 3.3, 6.3, 6.4, 7.1, 7.2, 7.6, 9.4, 9.5_
 
-- [ ] 4. Create API route for instance management
+- [x] 4. Create API route for instance management
   - Create /api/whatsapp/instances route with GET handler to list instances
   - Implement POST handler to create new instance with Evolution API
   - Create /api/whatsapp/instances/[id] route with GET, PUT, DELETE handlers
@@ -38,7 +38,7 @@
   - Add error handling and validation
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 10.1, 10.2, 10.6_
 
-- [ ] 5. Create API route for webhook handling
+- [x] 5. Create API route for webhook handling
   - Create /api/webhooks/evolution route with POST handler
   - Implement MESSAGES_UPSERT event processing for incoming messages
   - Implement CONNECTION_UPDATE event processing for connection status
@@ -50,7 +50,7 @@
   - Ensure response within 5 seconds as per requirement
   - _Requirements: 3.1, 3.2, 3.3, 3.6, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8_
 
-- [ ] 6. Create API routes for contact management
+- [x] 6. Create API routes for contact management
   - Create /api/whatsapp/contacts route with GET handler for listing contacts
   - Implement filtering by instance, contact type, and search query
   - Create /api/whatsapp/contacts/[id] route with GET and PUT handlers
@@ -58,7 +58,7 @@
   - Add unread message count calculation in contact list
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-- [ ] 7. Create API routes for message management
+- [x] 7. Create API routes for message management
   - Create /api/whatsapp/messages route with GET handler for message history
   - Implement pagination with cursor-based approach
   - Implement POST handler for sending text messages
@@ -68,7 +68,7 @@
   - Store sent messages in Supabase immediately
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 8. Create API routes for quick messages
+- [x] 8. Create API routes for quick messages
   - Create /api/whatsapp/quick-messages route with GET handler
   - Implement POST handler to create new quick message
   - Create /api/whatsapp/quick-messages/[id] route with PUT and DELETE handlers
@@ -76,7 +76,7 @@
   - Add validation for unique shortcuts
   - _Requirements: 6.1, 6.2, 6.5, 6.6_
 
-- [ ] 9. Create API routes for instance settings
+- [x] 9. Create API routes for instance settings
   - Create /api/whatsapp/settings/[instanceId] route with GET handler
   - Implement PUT handler to update settings
   - Sync settings with Evolution API using setSettings endpoint
@@ -84,24 +84,25 @@
   - Support all configuration options (rejectCalls, ignoreGroups, alwaysOnline, etc.)
   - _Requirements: 9.1, 9.2, 9.3, 9.6, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7_
 
-- [ ] 10. Implement WhatsApp context and state management
+- [x] 10. Implement WhatsApp context and state management
   - Create WhatsAppContext with React Context API
   - Implement state for instances, selected instance, contacts, and messages
   - Implement selectInstance and selectContact actions
   - Implement sendMessage action with optimistic updates
   - Implement refreshContacts and refreshMessages actions
   - Add loading and error states
-  - _Requirements: 2.5, 4.5, 5.1, 5.2, 10.3_
+  - Set up real-time subscriptions for messages and contacts
+  - _Requirements: 2.5, 4.5, 5.1, 5.2, 10.3, 3.1, 3.2, 12.3, 12.5_
 
-- [ ] 11. Create WhatsAppConnectionModal component
+- [x] 11. Create WhatsAppConnectionModal component
   - Create modal component with QR code display
-  - Implement real-time QR code updates using polling or Supabase Realtime
+  - Implement real-time QR code updates using polling
   - Show connection status (connecting, qr_code, connected)
   - Auto-close modal on successful connection
   - Add error handling for connection failures
   - _Requirements: 2.2, 2.4, 2.5_
 
-- [ ] 12. Create WhatsAppInstanceSelector component
+- [x] 12. Create WhatsAppInstanceSelector component
   - Create dropdown/selector for switching between instances
   - Display instance name and connection status
   - Show phone number when available
@@ -109,7 +110,7 @@
   - Trigger context update on instance selection
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 13. Create WhatsAppContactList component
+- [x] 13. Create WhatsAppContactList component
   - Create scrollable list of contacts with search input
   - Implement contact type filter (cliente, lead, profissional, prestador)
   - Display contact avatar, name, last message preview
@@ -118,7 +119,7 @@
   - Format last message timestamp (relative time)
   - _Requirements: 5.1, 7.3, 8.4, 8.5_
 
-- [ ] 14. Create WhatsAppChatView component
+- [x] 14. Create WhatsAppChatView component
   - Create message list with infinite scroll for pagination
   - Differentiate sent vs received messages visually
   - Display message timestamps
@@ -126,9 +127,10 @@
   - Implement audio player for voice messages
   - Add loading state for message history
   - Auto-scroll to bottom on new messages
+  - Group messages by date with separators
   - _Requirements: 3.5, 3.6, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 15. Create WhatsAppMessageInput component
+- [x] 15. Create WhatsAppMessageInput component
   - Create text input with send button
   - Implement audio recording button with recording UI
   - Add quick message autocomplete on "/" trigger
@@ -138,7 +140,7 @@
   - Disable input when instance is disconnected
   - _Requirements: 4.1, 4.2, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 16. Create WhatsAppContactInfoPanel component
+- [x] 16. Create WhatsAppContactInfoPanel component
   - Create side panel with contact details
   - Display contact type selector with options
   - Show client association status
@@ -147,7 +149,7 @@
   - Display contact phone number and profile picture
   - _Requirements: 7.3, 7.4, 7.5, 8.1, 8.2, 8.3, 8.6_
 
-- [ ] 17. Create WhatsAppSettingsPanel component
+- [x] 17. Create WhatsAppSettingsPanel component
   - Create settings form for instance configuration
   - Add toggle for reject calls with message input
   - Add toggle for ignore groups
@@ -159,7 +161,7 @@
   - Save settings to API on change
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 18. Create WhatsAppQuickMessagesManager component
+- [x] 18. Create WhatsAppQuickMessagesManager component
   - Create list of existing quick messages
   - Add form to create new quick message
   - Implement edit functionality for existing messages
@@ -169,7 +171,7 @@
   - Validate shortcut format (starts with /)
   - _Requirements: 6.5, 6.6_
 
-- [ ] 19. Update atendimento page with WhatsApp UI
+- [x] 19. Update atendimento page with WhatsApp UI
   - Replace placeholder content with WhatsApp interface
   - Add instance selector at top
   - Add "Connect Number" button when no instances exist
@@ -180,15 +182,7 @@
   - Add loading states for initial data fetch
   - _Requirements: 2.1, 2.2, 10.3, 10.4_
 
-- [ ] 20. Implement real-time message updates
-  - Set up Supabase Realtime subscription for whatsapp_messages table
-  - Filter subscription by selected instance and contact
-  - Update message list on new message insert
-  - Update message status on message update
-  - Handle subscription cleanup on unmount
-  - _Requirements: 3.1, 3.2, 5.1, 12.3, 12.5_
-
-- [ ] 21. Implement automatic client matching
+- [x] 20. Implement automatic client matching
   - Create background job or webhook handler for client matching
   - Normalize phone numbers for comparison (remove formatting)
   - Query clients table for matching phone number
@@ -196,7 +190,7 @@
   - Update contact name from client name when matched
   - _Requirements: 7.1, 7.2, 7.6, 8.3_
 
-- [ ] 22. Implement auto-reply functionality
+- [x] 21. Implement auto-reply functionality
   - Check availability schedule when message is received
   - Query auto_reply_log to prevent duplicate auto-replies
   - Send auto-reply message if outside availability hours
@@ -204,7 +198,7 @@
   - Respect one auto-reply per conversation per unavailability period
   - _Requirements: 9.4, 9.5_
 
-- [ ] 23. Add error handling and user feedback
+- [x] 22. Add error handling and user feedback
   - Implement toast notifications for success/error messages
   - Add error boundaries for component error handling
   - Show user-friendly error messages for API failures
@@ -213,14 +207,14 @@
   - Handle Evolution API connection errors gracefully
   - _Requirements: 4.6, 12.8_
 
-- [ ] 24. Add environment variables documentation
+- [x] 23. Add environment variables documentation
   - Update .env.example with EVOLUTION_API_BASE_URL
   - Update .env.example with EVOLUTION_API_KEY
   - Add comments explaining each variable
   - Document webhook URL format for Evolution API
   - _Requirements: 1.1, 1.2_
 
-- [ ] 25. Implement security measures
+- [x] 24. Implement security measures
   - Add webhook signature validation
   - Implement rate limiting on message sending (1 msg/sec per instance)
   - Add input sanitization for message content
@@ -229,7 +223,7 @@
   - Ensure only authenticated users can access WhatsApp features
   - _Requirements: 12.2_
 
-- [ ] 26. Performance optimizations
+- [x] 25. Performance optimizations
   - Add database indexes for frequently queried columns
   - Implement message pagination with cursor-based approach
   - Add caching for instance settings

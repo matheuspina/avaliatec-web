@@ -356,3 +356,121 @@ export class UserSyncError extends Error {
     this.name = 'UserSyncError'
   }
 }
+
+// WhatsApp Types
+
+export type WhatsAppInstance = {
+  id: string
+  instance_name: string
+  instance_token: string
+  phone_number: string | null
+  display_name: string
+  status: 'disconnected' | 'connecting' | 'connected' | 'qr_code'
+  qr_code: string | null
+  qr_code_updated_at: string | null
+  webhook_url: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  connected_at: string | null
+  last_seen_at: string | null
+}
+
+export type WhatsAppContact = {
+  id: string
+  instance_id: string
+  remote_jid: string
+  phone_number: string
+  name: string | null
+  profile_picture_url: string | null
+  contact_type: 'cliente' | 'lead' | 'profissional' | 'prestador' | 'unknown'
+  client_id: string | null
+  last_message_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WhatsAppMessage = {
+  id: string
+  instance_id: string
+  contact_id: string
+  message_id: string
+  remote_jid: string
+  from_me: boolean
+  message_type: 'text' | 'audio' | 'image' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'other'
+  text_content: string | null
+  media_url: string | null
+  media_mime_type: string | null
+  media_size: number | null
+  media_filename: string | null
+  quoted_message_id: string | null
+  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
+  timestamp: string
+  created_at: string
+}
+
+export type WhatsAppQuickMessage = {
+  id: string
+  shortcut: string
+  message_text: string
+  description: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WhatsAppInstanceSettings = {
+  id: string
+  instance_id: string
+  reject_calls: boolean
+  reject_call_message: string | null
+  ignore_groups: boolean
+  always_online: boolean
+  read_messages: boolean
+  read_status: boolean
+  auto_reply_enabled: boolean
+  auto_reply_message: string | null
+  availability_schedule: AvailabilitySchedule
+  created_at: string
+  updated_at: string
+}
+
+export type AvailabilitySchedule = {
+  [day: string]: {
+    enabled: boolean
+    start: string // HH:mm
+    end: string // HH:mm
+  }
+}
+
+export type WhatsAppAutoReplyLog = {
+  id: string
+  instance_id: string
+  contact_id: string
+  message_sent: string
+  sent_at: string
+}
+
+export type WebhookData = {
+  event: string
+  instance: string
+  data: any
+  destination: string
+  date_time: string
+  sender: string
+  server_url: string
+  apikey: string
+}
+
+// WhatsApp Error Classes
+
+export class WhatsAppServiceError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
+    super(message)
+    this.name = 'WhatsAppServiceError'
+  }
+}
