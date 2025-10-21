@@ -77,6 +77,9 @@ export function WhatsAppConnectionModal({
         case 'qr_code':
           setStatus('qr_code')
           break
+        case 'connecting':
+          setStatus('connecting')
+          break
         case 'connected':
           setStatus('connected')
           // Stop polling and close modal on successful connection
@@ -91,8 +94,13 @@ export function WhatsAppConnectionModal({
           onOpenChange(false)
           break
         case 'disconnected':
-          setStatus('error')
-          setError('Connection failed. The QR code may have expired.')
+          // Only show error if we were previously in a connected state
+          // Don't show error if we're still waiting for QR code scan
+          if (status === 'connected' || status === 'connecting') {
+            setStatus('error')
+            setError('Connection failed. The QR code may have expired.')
+          }
+          // If we're in qr_code status, keep showing the QR code
           break
       }
     } catch (err) {
@@ -313,6 +321,10 @@ export function WhatsAppConnectionModal({
                   3. Tap &quot;Link a Device&quot; and scan this QR code
                 </p>
               </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <RefreshCw className="h-3 w-3" />
+                <span>QR code will refresh automatically if needed</span>
+              </div>
             </div>
           )}
 
@@ -336,7 +348,24 @@ export function WhatsAppConnectionModal({
               </>
             )}
 
-            {(status === 'creating' || status === 'connecting' || status === 'qr_code') && (
+            {status === 'qr_code' && (
+              <>
+                <Button variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => instanceId && pollInstanceStatus(instanceId)}
+                  className="text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Refresh QR Code
+                </Button>
+              </>
+            )}
+
+            {(status === 'creating' || status === 'connecting') && (
               <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>

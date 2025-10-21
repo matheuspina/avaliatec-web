@@ -145,13 +145,42 @@ export class WhatsAppService {
    * Handle CONNECTION_UPDATE event - connection status change
    */
   private async handleConnectionUpdate(instance: WhatsAppInstance, data: any): Promise<void> {
-    const status = this.mapConnectionStatus(data.state)
+    const newStatus = this.mapConnectionStatus(data.state)
+
+    console.log(`CONNECTION_UPDATE for instance ${instance.id}:`, {
+      currentStatus: instance.status,
+      newStatus,
+      state: data.state,
+      hasQrCode: !!instance.qr_code
+    })
+
+    // Don't change status to 'disconnected' if currently showing QR code
+    // This prevents the QR code from disappearing while waiting for user to scan
+    if (newStatus === 'disconnected' && instance.status === 'qr_code') {
+      console.log(`✓ Ignoring disconnected status for instance ${instance.id} - QR code is still active`)
+      // Still update last_seen_at to show the instance is being monitored
+      await supabase
+        .from('whatsapp_instances')
+        .update({
+          last_seen_at: new Date().toISOString()
+        })
+        .eq('id', instance.id)
+      return
+    }
+
+    // Only update to 'connecting' if we're not already in a better state
+    if (newStatus === 'connecting' && (instance.status === 'connected' || instance.status === 'qr_code')) {
+      console.log(`✓ Ignoring connecting status for instance ${instance.id} - already in ${instance.status}`)
+      return
+    }
+
+    console.log(`✓ Updating instance ${instance.id} status from ${instance.status} to ${newStatus}`)
 
     await supabase
       .from('whatsapp_instances')
       .update({
-        status,
-        connected_at: status === 'connected' ? new Date().toISOString() : null,
+        status: newStatus,
+        connected_at: newStatus === 'connected' ? new Date().toISOString() : null,
         last_seen_at: new Date().toISOString(),
         phone_number: data.instance?.wid ? this.extractPhoneFromJid(data.instance.wid) : null
       })
