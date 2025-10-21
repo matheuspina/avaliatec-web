@@ -33,19 +33,19 @@ function isEventProcessed(eventId: string): boolean {
   if (!timestamp) {
     return false
   }
-  
+
   // Check if event is still within TTL
   if (Date.now() - timestamp > IDEMPOTENCY_TTL) {
     processedEvents.delete(eventId)
     return false
   }
-  
+
   return true
 }
 
 function markEventProcessed(eventId: string): void {
   processedEvents.set(eventId, Date.now())
-  
+
   // Clean up old entries periodically
   if (processedEvents.size > 1000) {
     const cutoff = Date.now() - IDEMPOTENCY_TTL
@@ -64,12 +64,12 @@ function markEventProcessed(eventId: string): void {
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
-  
+
   try {
     // Parse request body
     const body = await request.text()
     let webhookData: WebhookData
-    
+
     try {
       webhookData = JSON.parse(body)
     } catch (error) {
@@ -94,10 +94,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate webhook signature if secret is configured (Requirement 12.2)
-    const signature = request.headers.get('x-signature-256') || 
-                     request.headers.get('x-hub-signature-256')
+    const signature = request.headers.get('x-signature-256') ||
+      request.headers.get('x-hub-signature-256')
     const webhookSecret = process.env.WEBHOOK_SECRET
-    
+
     if (webhookSecret && !validateWebhookSignature(body, signature, webhookSecret)) {
       console.error('Invalid webhook signature')
       return NextResponse.json(
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     // Create unique event ID for idempotency
     const eventId = `${webhookData.instance}-${webhookData.event}-${webhookData.date_time || Date.now()}`
-    
+
     // Check if event was already processed (idempotency)
     if (isEventProcessed(eventId)) {
       console.log(`Event already processed: ${eventId}`)
@@ -120,41 +120,53 @@ export async function POST(request: NextRequest) {
 
     // Log incoming webhook for debugging
     console.log(`Webhook received: ${webhookData.event} from instance ${webhookData.instance}`)
+    console.log(`Webhook data:`, JSON.stringify(webhookData.data, null, 2))
+
+    // Normalize event name (Evolution API sends lowercase with dots, we use uppercase with underscores)
+    const normalizedEvent = webhookData.event
+      .toUpperCase()
+      .replace(/\./g, '_')
+      .replace(/-/g, '_')
+
+    console.log(`Normalized event: ${normalizedEvent}`)
 
     // Process webhook based on event type
     const whatsappService = getWhatsAppService()
-    
+
     try {
-      switch (webhookData.event) {
+      // Update webhookData with normalized event name
+      webhookData.event = normalizedEvent
+
+      switch (normalizedEvent) {
         case 'MESSAGES_UPSERT':
           // Process incoming messages (Requirements 12.3, 3.1, 3.2, 3.3)
           await whatsappService.processIncomingMessage(webhookData)
-          console.log(`Processed MESSAGES_UPSERT for instance ${webhookData.instance}`)
+          console.log(`✓ Processed MESSAGES_UPSERT for instance ${webhookData.instance}`)
           break
 
         case 'MESSAGES_UPDATE':
           // Process message status updates (Requirement 3.6)
           await whatsappService.processIncomingMessage(webhookData)
-          console.log(`Processed MESSAGES_UPDATE for instance ${webhookData.instance}`)
+          console.log(`✓ Processed MESSAGES_UPDATE for instance ${webhookData.instance}`)
           break
 
         case 'CONNECTION_UPDATE':
           // Process connection status changes (Requirement 12.4)
           await whatsappService.processIncomingMessage(webhookData)
-          console.log(`Processed CONNECTION_UPDATE for instance ${webhookData.instance}`)
+          console.log(`✓ Processed CONNECTION_UPDATE for instance ${webhookData.instance}`)
           break
 
         case 'QRCODE_UPDATED':
           // Process QR code updates (Requirement 12.5)
           await whatsappService.processIncomingMessage(webhookData)
-          console.log(`Processed QRCODE_UPDATED for instance ${webhookData.instance}`)
+          console.log(`✓ Processed QRCODE_UPDATED for instance ${webhookData.instance}`)
           break
 
         case 'CONTACTS_UPSERT':
           // Process contact updates (Requirement 12.6)
           await whatsappService.processIncomingMessage(webhookData)
-          console.log(`Processed CONTACTS_UPSERT for instance ${webhookData.instance}`)
-          
+          console.log(`✓ Processed CONTACTS_UPSERT for instance ${webhookData.instance}`)
+
           // Trigger automatic client matching for new contacts
           try {
             const { matchSingleContact } = await import('@/lib/services/clientMatchingJob')
@@ -185,13 +197,13 @@ export async function POST(request: NextRequest) {
         console.warn(`Webhook processing took ${processingTime}ms for event ${webhookData.event}`)
       }
 
-      const response = NextResponse.json({ 
+      const response = NextResponse.json({
         status: 'success',
         event: webhookData.event,
         instance: webhookData.instance,
         processingTime: processingTime
       })
-      
+
       return addSecurityHeaders(response)
 
     } catch (processingError) {
@@ -213,14 +225,14 @@ export async function POST(request: NextRequest) {
       })
 
       // Still return success to prevent Evolution API retries
-      const response = NextResponse.json({ 
+      const response = NextResponse.json({
         status: 'error_logged',
         event: webhookData.event,
         instance: webhookData.instance,
         error: processingError instanceof Error ? processingError.message : 'Unknown error',
         processingTime: Date.now() - startTime
       })
-      
+
       return addSecurityHeaders(response)
     }
 
@@ -239,12 +251,12 @@ export async function POST(request: NextRequest) {
     })
 
     // Return success to prevent retries even on critical errors
-    const response = NextResponse.json({ 
+    const response = NextResponse.json({
       status: 'critical_error_logged',
       error: error instanceof Error ? error.message : 'Critical error occurred',
       processingTime: Date.now() - startTime
     })
-    
+
     return addSecurityHeaders(response)
   }
 }
@@ -260,7 +272,7 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     service: 'evolution-webhook'
   })
-  
+
   return addSecurityHeaders(response)
 }
 
