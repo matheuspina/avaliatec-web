@@ -44,6 +44,7 @@ type Task = {
   status: string
   deadline: string | null
   assignee: string
+  assigneeId?: string | null
   labels?: string[]
   project?: {
     id: string
@@ -250,6 +251,7 @@ export default function TarefasPage() {
             status: t.status,
             deadline: t.deadline ?? null,
             assignee: t.assignee ?? "",
+            assigneeId: t.assigneeId ?? null,
             labels: t.labels ?? [],
             project: t.project,
           }))
@@ -546,6 +548,8 @@ export default function TarefasPage() {
         description: updatedTask.description ?? null,
         status: updatedTask.status,
         deadline: updatedTask.deadline ?? undefined,
+        assigned_to: updatedTask.assigneeId ?? null,
+        labels: updatedTask.labels ?? [],
       })
     } catch (err) {
       console.error("Erro ao atualizar tarefa:", err)
@@ -565,6 +569,7 @@ export default function TarefasPage() {
             status: t.status,
             deadline: t.deadline ?? null,
             assignee: t.assignee ?? "",
+            assigneeId: t.assigneeId ?? null,
             labels: t.labels ?? [],
             project: t.project,
           }))
@@ -606,6 +611,7 @@ export default function TarefasPage() {
             status: t.status,
             deadline: t.deadline ?? null,
             assignee: t.assignee ?? "",
+            assigneeId: t.assigneeId ?? null,
             labels: t.labels ?? [],
             project: t.project,
           }))

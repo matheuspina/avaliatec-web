@@ -33,6 +33,8 @@ import {
   removeChecklistItem,
   type ChecklistItem,
   updateTask,
+  listProfiles,
+  type Profile,
 } from "@/lib/data/tasks"
 import {
   listComments,
@@ -119,7 +121,9 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
   const [showDateSection, setShowDateSection] = useState(false)
   const [showChecklistSection, setShowChecklistSection] = useState(false)
   const [showProjectSection, setShowProjectSection] = useState(false)
+  const [showMembersSection, setShowMembersSection] = useState(false)
   const [projects, setProjects] = useState<ProjectListItem[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
   const labelsInputRef = useRef<HTMLInputElement | null>(null)
   const checklistInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -133,15 +137,19 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
     }
   }, [task, open])
 
-  // Carregar projetos
+  // Carregar projetos e usuários
   useEffect(() => {
     if (open) {
       (async () => {
         try {
-          const data = await listProjects()
-          setProjects(data)
+          const [projectsData, profilesData] = await Promise.all([
+            listProjects(),
+            listProfiles()
+          ])
+          setProjects(projectsData)
+          setProfiles(profilesData)
         } catch (err) {
-          console.error("Erro ao carregar projetos:", err)
+          console.error("Erro ao carregar projetos e usuários:", err)
         }
       })()
     }
@@ -516,7 +524,11 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                 <FolderKanban className="mr-2 h-4 w-4" />
                 Projeto
               </Button>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMembersSection(true)}
+              >
                 <Users className="mr-2 h-4 w-4" />
                 Membros
               </Button>
@@ -602,14 +614,54 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                 <User className="h-5 w-5" />
                 <h3 className="font-semibold">Responsável</h3>
               </div>
-              <Input
-                value={editedTask.assignee}
-                onChange={(e) =>
-                  setEditedTask({ ...editedTask, assignee: e.target.value })
-                }
-                onBlur={handleUpdate}
+              <Select
+                value={editedTask.assigneeId || "unassigned"}
+                onValueChange={async (value) => {
+                  if (!editedTask.id) return
+                  const selectedProfile = profiles.find((p) => p.id === value)
+
+                  try {
+                    await updateTask(editedTask.id, { assigned_to: value === "unassigned" ? null : value })
+                    const updatedTask = {
+                      ...editedTask,
+                      assigneeId: value === "unassigned" ? null : value,
+                      assignee: selectedProfile?.fullName || ""
+                    }
+                    setEditedTask(updatedTask)
+                    if (onUpdate) {
+                      onUpdate(updatedTask)
+                    }
+                    toast({
+                      title: "Responsável atualizado",
+                      description: `Tarefa atribuída a ${selectedProfile?.fullName || "ninguém"}`,
+                    })
+                  } catch (err) {
+                    console.error("Erro ao atribuir responsável:", err)
+                    toast({
+                      title: "Erro ao atribuir responsável",
+                      description: "Não foi possível atribuir o responsável",
+                      variant: "destructive",
+                    })
+                  }
+                }}
                 disabled={isReadOnly}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar responsável">
+                    {editedTask.assignee || "Sem responsável"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">
+                    <span className="text-muted-foreground">Sem responsável</span>
+                  </SelectItem>
+                  {profiles.map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           )}
@@ -662,7 +714,6 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
               </div>
             ) : (
               <Select
-                value={editedTask.project ? (editedTask.project as { id: string }).id : ""}
                 onValueChange={async (value) => {
                   if (!editedTask.id || !value) return
                   const selectedProject: ProjectListItem | undefined = projects.find((p) => p.id === value)
@@ -716,8 +767,72 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           </div>
           )}
 
+          {/* Membros */}
+          {(showMembersSection || (editedTask.members && editedTask.members.length > 0)) && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                <h3 className="font-semibold">Membros</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {editedTask.members && editedTask.members.map((member) => (
+                  <Badge key={member} variant="outline" className="gap-1">
+                    {member}
+                    {!isReadOnly && (
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => {
+                          const nextMembers = editedTask.members?.filter((m) => m !== member) ?? []
+                          if (nextMembers.length === 0) {
+                            setShowMembersSection(false)
+                          }
+                          setEditedTask({ ...editedTask, members: nextMembers })
+                          toast({
+                            title: "Membro removido",
+                            description: `${member} foi removido da tarefa`,
+                          })
+                        }}
+                      />
+                    )}
+                  </Badge>
+                ))}
+                {!isReadOnly && (
+                  <Select
+                    onValueChange={async (value) => {
+                      if (!editedTask.id || !value) return
+                      const selectedProfile = profiles.find((p) => p.id === value)
+                      if (!selectedProfile) return
+
+                      // Adicionar membro à lista (aqui você pode implementar a chamada ao backend)
+                      const newMembers = [...(editedTask.members || []), selectedProfile.fullName]
+                      setEditedTask({ ...editedTask, members: newMembers })
+
+                      toast({
+                        title: "Membro adicionado",
+                        description: `${selectedProfile.fullName} foi adicionado à tarefa`,
+                      })
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px] h-8">
+                      <SelectValue placeholder="Adicionar membro" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles
+                        .filter((p) => !editedTask.members?.includes(p.fullName))
+                        .map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.fullName}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+          )}
+
           {(showChecklistSection || checklistItems.length > 0 || loadingChecklist) && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5" />
               <h3 className="font-semibold">Checklist</h3>
@@ -727,21 +842,21 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                 </Badge>
               )}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {loadingChecklist ? (
-                <p className="text-sm text-muted-foreground">Carregando checklist...</p>
+                <p className="text-sm text-muted-foreground py-1">Carregando checklist...</p>
               ) : (
                 checklistItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 group">
+                  <div key={item.id} className="flex items-start gap-2 group py-1 hover:bg-accent/50 rounded px-1 -mx-1 transition-colors">
                     <input
                       type="checkbox"
                       checked={item.completed}
                       onChange={() => handleToggleChecklistItem(item.id)}
-                      className="h-4 w-4"
+                      className="h-4 w-4 mt-0.5 cursor-pointer"
                       disabled={isReadOnly}
                     />
                     <span
-                      className={`flex-1 ${
+                      className={`flex-1 text-sm leading-relaxed ${
                         item.completed ? "line-through text-muted-foreground" : ""
                       }`}
                     >
@@ -749,19 +864,19 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                     </span>
                     {!isReadOnly && (
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        className="opacity-0 group-hover:opacity-100"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 flex-shrink-0"
                         onClick={() => handleRemoveChecklistItem(item.id)}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
                 ))
               )}
               {!isReadOnly && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <Input
                     value={newChecklistItem}
                     onChange={(e) => setNewChecklistItem(e.target.value)}
@@ -773,9 +888,10 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                     ref={checklistInputRef}
                   />
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
                     onClick={handleAddChecklistItem}
+                    className="h-8 w-8"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -783,23 +899,6 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
               )}
             </div>
           </div>
-          )}
-
-          {/* Membros */}
-          {editedTask.members && editedTask.members.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                <h3 className="font-semibold">Membros</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {editedTask.members.map((member) => (
-                  <Badge key={member} variant="outline">
-                    {member}
-                  </Badge>
-                ))}
-              </div>
-            </div>
           )}
 
           <Separator />
