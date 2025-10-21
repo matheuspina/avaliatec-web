@@ -92,13 +92,26 @@ export async function POST(request: NextRequest) {
       const instanceName = `instance_${timestamp}_${Math.random().toString(36).substring(2, 8)}`
       
       // Get webhook URL from environment or construct it
-      const webhookUrl = process.env.NEXT_PUBLIC_APP_URL 
+      let webhookUrl = process.env.NEXT_PUBLIC_APP_URL 
         ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/evolution`
         : `${request.nextUrl.origin}/api/webhooks/evolution`
+      
+      // Warn if using localhost (won't work with external Evolution API)
+      if (webhookUrl.includes('localhost') || webhookUrl.includes('127.0.0.1')) {
+        console.warn('⚠️  Webhook URL uses localhost - Evolution API may not be able to reach it:', webhookUrl)
+        console.warn('   Configure NEXT_PUBLIC_APP_URL with a public URL (e.g., ngrok, production domain)')
+      }
 
       try {
         // Create instance in Evolution API
         const evolutionClient = getEvolutionApiClient()
+        
+        console.log('Creating WhatsApp instance:', {
+          instanceName,
+          webhookUrl,
+          displayName: body.displayName
+        })
+        
         const evolutionResponse = await evolutionClient.createInstance({
           instanceName,
           qrcode: true,
@@ -112,15 +125,33 @@ export async function POST(request: NextRequest) {
             'CONTACTS_UPSERT'
           ]
         })
+        
+        console.log('Evolution API response:', {
+          instanceName: evolutionResponse.instance?.instanceName,
+          status: evolutionResponse.instance?.status,
+          hasQrCode: !!evolutionResponse.qrcode?.base64,
+          hasHash: !!evolutionResponse.hash
+        })
 
-        // Store instance in Supabase
+        // Extract token from response (can be string or object)
+        const instanceToken = typeof evolutionResponse.hash === 'string' 
+          ? evolutionResponse.hash 
+          : evolutionResponse.hash?.apikey || ''
+
+        // Extract QR Code from response
+        const qrCodeBase64 = evolutionResponse.qrcode?.base64 || null
+        const qrCodeUpdatedAt = qrCodeBase64 ? new Date().toISOString() : null
+
+        // Store instance in Supabase with QR Code
         const { data: instance, error: dbError } = await supabase
           .from('whatsapp_instances')
           .insert({
             instance_name: instanceName,
-            instance_token: evolutionResponse.hash?.apikey || '',
+            instance_token: instanceToken,
             display_name: body.displayName.trim(),
-            status: 'disconnected',
+            status: 'qr_code', // Initial status is qr_code waiting for scan
+            qr_code: qrCodeBase64,
+            qr_code_updated_at: qrCodeUpdatedAt,
             webhook_url: webhookUrl,
             created_by: userId
           })
@@ -129,6 +160,12 @@ export async function POST(request: NextRequest) {
 
         if (dbError) {
           console.error('Error storing instance in database:', dbError)
+          console.error('Database error details:', {
+            code: dbError.code,
+            message: dbError.message,
+            details: dbError.details,
+            hint: dbError.hint
+          })
           
           // Try to cleanup Evolution API instance
           try {
@@ -138,18 +175,23 @@ export async function POST(request: NextRequest) {
           }
 
           return NextResponse.json(
-            { error: 'Failed to create instance', code: 'CREATE_ERROR' },
+            { 
+              error: 'Failed to create instance', 
+              code: 'CREATE_ERROR',
+              details: dbError.message 
+            },
             { status: 500 }
           )
         }
 
-        // Transform response
+        // Transform response with QR Code
         const responseData = {
           id: instance.id,
           instanceName: instance.instance_name,
           displayName: instance.display_name,
           status: instance.status,
-          qrCode: null,
+          qrCode: instance.qr_code,
+          qrCodeUpdatedAt: instance.qr_code_updated_at,
           createdAt: instance.created_at
         }
 
@@ -158,7 +200,7 @@ export async function POST(request: NextRequest) {
           data: {
             instance: responseData
           },
-          message: 'Instance created successfully'
+          message: 'Instance created successfully. Scan the QR code to connect.'
         }, { status: 201 })
 
       } catch (evolutionError) {

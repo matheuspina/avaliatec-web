@@ -38,13 +38,25 @@ export interface CreateInstanceData {
 export interface Instance {
   instance: {
     instanceName: string
+    instanceId?: string
+    integration?: string
     status: string
   }
-  hash?: {
+  hash?: string | {
     apikey: string
   }
-  webhook?: string
-  events?: string[]
+  qrcode?: {
+    pairingCode: string | null
+    code: string
+    base64: string
+    count: number
+  }
+  webhook?: any
+  websocket?: any
+  rabbitmq?: any
+  nats?: any
+  sqs?: any
+  settings?: any
 }
 
 export interface ConnectionState {
