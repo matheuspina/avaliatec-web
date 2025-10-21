@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return withPermissionCheck(request, 'atendimento', async (userId) => {
+  return withPermissionCheck(request, 'atendimento', async (userId, authUserId) => {
     try {
       const supabase = await createClient()
       const body = await request.json()
@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
         const qrCodeUpdatedAt = qrCodeBase64 ? new Date().toISOString() : null
 
         // Store instance in Supabase with QR Code
+        // Note: created_by references profiles(id) which is the same as auth.uid()
         const { data: instance, error: dbError } = await supabase
           .from('whatsapp_instances')
           .insert({
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
             qr_code: qrCodeBase64,
             qr_code_updated_at: qrCodeUpdatedAt,
             webhook_url: webhookUrl,
-            created_by: userId
+            created_by: authUserId // Use authUserId which matches profiles(id)
           })
           .select()
           .single()

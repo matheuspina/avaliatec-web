@@ -1,0 +1,31 @@
+-- Fix ambiguous column reference in user_has_permission function
+-- This migration fixes the "column reference section_key is ambiguous" error
+-- 
+-- The issue was that the function parameter "section_key" had the same name as
+-- the column "gp.section_key", causing PostgreSQL to be unable to determine which
+-- one to use in the WHERE clause.
+--
+-- Solution: Rename parameters with p_ prefix and variables with v_ prefix
+-- to avoid naming conflicts with table columns.
+--
+-- Note: This migration was applied manually via SQL commands because PostgreSQL
+-- doesn't allow changing parameter names with CREATE OR REPLACE, and dropping
+-- the function would cascade to all dependent policies.
+
+-- Applied manually:
+-- 1. Created user_has_permission_v2 with correct parameter names
+-- 2. Updated all RLS policies to use user_has_permission_v2
+-- 3. Dropped old user_has_permission function
+-- 4. Renamed user_has_permission_v2 to user_has_permission
+-- 5. Updated all policies back to use user_has_permission
+
+-- Final function signature:
+-- CREATE FUNCTION user_has_permission(p_section_key TEXT, p_action_type TEXT)
+-- 
+-- Parameters:
+--   p_section_key: The section to check (e.g., 'atendimento', 'clientes')
+--   p_action_type: The action type ('view', 'create', 'edit', 'delete')
+--
+-- Returns: BOOLEAN indicating if current user has the permission
+
+-- This file serves as documentation of the migration that was applied manually.

@@ -24,16 +24,16 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Helper function to check if user has permission for a section
-CREATE OR REPLACE FUNCTION user_has_permission(section_key TEXT, action_type TEXT)
+CREATE OR REPLACE FUNCTION user_has_permission(p_section_key TEXT, p_action_type TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
-  user_id UUID;
-  has_permission BOOLEAN := FALSE;
+  v_user_id UUID;
+  v_has_permission BOOLEAN := FALSE;
 BEGIN
   -- Get current user ID
-  user_id := get_current_user_id();
+  v_user_id := get_current_user_id();
   
-  IF user_id IS NULL THEN
+  IF v_user_id IS NULL THEN
     RETURN FALSE;
   END IF;
 
@@ -43,18 +43,18 @@ BEGIN
     FROM users u
     JOIN user_groups ug ON u.group_id = ug.id
     JOIN group_permissions gp ON ug.id = gp.group_id
-    WHERE u.id = user_id
+    WHERE u.id = v_user_id
       AND u.status = 'active'
-      AND gp.section_key = section_key
+      AND gp.section_key = p_section_key
       AND (
-        (action_type = 'view' AND gp.can_view = true) OR
-        (action_type = 'create' AND gp.can_create = true) OR
-        (action_type = 'edit' AND gp.can_edit = true) OR
-        (action_type = 'delete' AND gp.can_delete = true)
+        (p_action_type = 'view' AND gp.can_view = true) OR
+        (p_action_type = 'create' AND gp.can_create = true) OR
+        (p_action_type = 'edit' AND gp.can_edit = true) OR
+        (p_action_type = 'delete' AND gp.can_delete = true)
       )
-  ) INTO has_permission;
+  ) INTO v_has_permission;
 
-  RETURN has_permission;
+  RETURN v_has_permission;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
