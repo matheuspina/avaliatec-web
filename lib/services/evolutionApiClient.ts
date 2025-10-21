@@ -29,6 +29,7 @@ export interface CreateInstanceData {
   token?: string
   qrcode?: boolean
   number?: string
+  integration?: string
   webhook?: string
   webhook_by_events?: boolean
   events?: string[]
@@ -332,14 +333,16 @@ export class EvolutionApiClient {
     const webhookUrl = data.webhook || this.config.webhookUrl
     
     // Configure webhook with required events (Requirement 2.6)
+    // Using correct field names from Evolution API documentation
     const payload = {
       instanceName: data.instanceName,
-      token: data.token,
+      token: data.token || data.instanceName, // Use instanceName as token if not provided
       qrcode: data.qrcode !== false, // Default to true
       number: data.number,
-      webhook: webhookUrl,
-      webhook_by_events: true,
-      events: data.events || [
+      integration: data.integration || 'WHATSAPP-BAILEYS', // Required field - default to WHATSAPP-BAILEYS
+      webhookUrl: webhookUrl,
+      webhookByEvents: true,
+      webhookEvents: data.events || [
         'MESSAGES_UPSERT',
         'MESSAGES_UPDATE', 
         'CONNECTION_UPDATE',
