@@ -354,7 +354,7 @@ export class EvolutionApiClient {
       integration: data.integration || 'WHATSAPP-BAILEYS', // Required field - default to WHATSAPP-BAILEYS
       webhook: {
         url: webhookUrl,
-        byEvents: true,
+        byEvents: false, // Set to false to send all events to the same URL
         base64: false,
         events: data.events || [
           'MESSAGES_UPSERT',
