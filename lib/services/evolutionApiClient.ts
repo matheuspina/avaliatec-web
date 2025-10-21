@@ -345,28 +345,41 @@ export class EvolutionApiClient {
     const webhookUrl = data.webhook || this.config.webhookUrl
     
     // Configure webhook with required events (Requirement 2.6)
-    // Using correct field names from Evolution API documentation
+    // IMPORTANT: webhook must be a nested object, not flat fields!
     const payload = {
       instanceName: data.instanceName,
       token: data.token || data.instanceName, // Use instanceName as token if not provided
       qrcode: data.qrcode !== false, // Default to true
       number: data.number,
       integration: data.integration || 'WHATSAPP-BAILEYS', // Required field - default to WHATSAPP-BAILEYS
-      webhookUrl: webhookUrl,
-      webhookByEvents: true,
-      webhookEvents: data.events || [
-        'MESSAGES_UPSERT',
-        'MESSAGES_UPDATE', 
-        'CONNECTION_UPDATE',
-        'QRCODE_UPDATED',
-        'CONTACTS_UPSERT'
-      ]
+      webhook: {
+        url: webhookUrl,
+        byEvents: true,
+        base64: false,
+        events: data.events || [
+          'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE', 
+          'CONNECTION_UPDATE',
+          'QRCODE_UPDATED',
+          'CONTACTS_UPSERT'
+        ]
+      }
     }
 
-    return this.makeRequest<Instance>('/instance/create', {
+    console.log('[Evolution API] Creating instance with payload:', JSON.stringify(payload, null, 2))
+
+    const response = await this.makeRequest<Instance>('/instance/create', {
       method: 'POST',
       body: JSON.stringify(payload)
     })
+
+    console.log('[Evolution API] Instance created successfully:', {
+      instanceName: response.instance?.instanceName,
+      hasWebhook: !!response.webhook,
+      webhookConfig: response.webhook
+    })
+
+    return response
   }
 
   /**

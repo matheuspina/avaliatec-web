@@ -62,14 +62,29 @@ export class WhatsAppService {
     try {
       const { event, instance: instanceName, data } = webhookData
 
+      console.log(`[WEBHOOK] Processing ${event} for instance: ${instanceName}`)
+      console.log(`[WEBHOOK] Event data:`, JSON.stringify(data, null, 2))
+
       // Get instance from database
       const instance = await this.getInstanceByName(instanceName)
       if (!instance) {
-        throw new WhatsAppServiceError(
-          `Instance not found: ${instanceName}`,
-          'INSTANCE_NOT_FOUND'
-        )
+        console.error(`[WEBHOOK ERROR] Instance not found in database: ${instanceName}`)
+        const availableInstances = await this.listAllInstanceNames()
+        console.error('[WEBHOOK ERROR] Available instances in DB:', availableInstances)
+        console.error('[WEBHOOK ERROR] Total instances:', availableInstances.length)
+
+        // Don't throw error - just log and return
+        // This prevents webhook from failing when instance doesn't exist
+        console.warn(`[WEBHOOK] Ignoring event for unknown instance: ${instanceName}`)
+        return
       }
+
+      console.log(`[WEBHOOK] Found instance in DB:`, {
+        id: instance.id,
+        instance_name: instance.instance_name,
+        display_name: instance.display_name,
+        status: instance.status
+      })
 
       switch (event) {
         case 'MESSAGES_UPSERT':
@@ -717,6 +732,16 @@ export class WhatsAppService {
       .single()
 
     return data
+  }
+
+  private async listAllInstanceNames(): Promise<string[]> {
+    const { data } = await supabase
+      .from('whatsapp_instances')
+      .select('instance_name')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    return data?.map(i => i.instance_name) || []
   }
 
   private async getInstanceSettings(instanceId: string): Promise<WhatsAppInstanceSettings | null> {

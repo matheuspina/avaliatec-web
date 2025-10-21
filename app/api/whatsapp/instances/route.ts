@@ -127,11 +127,23 @@ export async function POST(request: NextRequest) {
         })
         
         console.log('Evolution API response:', {
-          instanceName: evolutionResponse.instance?.instanceName,
+          requestedInstanceName: instanceName,
+          returnedInstanceName: evolutionResponse.instance?.instanceName,
           status: evolutionResponse.instance?.status,
           hasQrCode: !!evolutionResponse.qrcode?.base64,
           hasHash: !!evolutionResponse.hash
         })
+
+        // IMPORTANT: Use the instance name returned by Evolution API, not the one we sent
+        // Evolution API may normalize or modify the instance name
+        const actualInstanceName = evolutionResponse.instance?.instanceName || instanceName
+
+        if (actualInstanceName !== instanceName) {
+          console.warn(`⚠️  Instance name mismatch!`)
+          console.warn(`   Requested: ${instanceName}`)
+          console.warn(`   Returned by Evolution API: ${actualInstanceName}`)
+          console.warn(`   Using: ${actualInstanceName}`)
+        }
 
         // Extract token from response (can be string or object)
         const instanceToken = typeof evolutionResponse.hash === 'string' 
@@ -147,7 +159,7 @@ export async function POST(request: NextRequest) {
         const { data: instance, error: dbError } = await supabase
           .from('whatsapp_instances')
           .insert({
-            instance_name: instanceName,
+            instance_name: actualInstanceName, // Use the name returned by Evolution API
             instance_token: instanceToken,
             display_name: body.displayName.trim(),
             status: 'qr_code', // Initial status is qr_code waiting for scan
