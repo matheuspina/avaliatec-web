@@ -192,13 +192,13 @@ export async function listChecklist(taskId: string): Promise<ChecklistItem[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from("task_checklist")
-    .select("id, item, completed, position")
+    .select("id, text, completed, position")
     .eq("task_id", taskId)
     .order("position", { ascending: true })
   if (error) throw error
   return (data ?? []).map((i: any) => ({
     id: i.id,
-    text: i.item ?? "",
+    text: i.text ?? "",
     completed: !!i.completed,
     position: i.position,
   }))
@@ -208,7 +208,7 @@ export async function addChecklistItem(taskId: string, text: string): Promise<st
   const supabase = createClient()
   const { data, error } = await supabase
     .from("task_checklist")
-    .insert({ task_id: taskId, item: text })
+    .insert({ task_id: taskId, text })
     .select("id")
     .single()
   if (error) throw error
@@ -237,16 +237,17 @@ export type Profile = {
 
 export async function listProfiles(): Promise<Profile[]> {
   const supabase = createClient()
+  // Email vive em `public.users` (008); `profiles` não tem coluna email no schema base.
   const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, avatar_url")
+    .from("users")
+    .select("auth_user_id, full_name, email, avatar_url")
     .order("full_name", { ascending: true })
   if (error) throw error
-  return (data ?? []).map((p: any) => ({
-    id: p.id,
-    fullName: p.full_name ?? "",
-    email: p.email ?? "",
-    avatarUrl: p.avatar_url ?? null,
+  return (data ?? []).map((u: any) => ({
+    id: u.auth_user_id,
+    fullName: u.full_name ?? "",
+    email: u.email ?? "",
+    avatarUrl: u.avatar_url ?? null,
   }))
 }
 

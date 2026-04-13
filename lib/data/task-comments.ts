@@ -19,7 +19,7 @@ export async function listComments(taskId: string): Promise<TaskComment[]> {
 
   const { data, error } = await supabase
     .from("task_comments")
-    .select("id, task_id, user_id, content, created_at, updated_at, profiles:profiles!task_comments_user_id_fkey(full_name, avatar_url)")
+    .select("id, task_id, user_id, text, created_at, updated_at, profiles:profiles!task_comments_user_id_fkey(full_name, avatar_url)")
     .eq("task_id", taskId)
     .order("created_at", { ascending: true })
 
@@ -29,7 +29,7 @@ export async function listComments(taskId: string): Promise<TaskComment[]> {
     id: c.id,
     task_id: c.task_id,
     user_id: c.user_id,
-    text: c.content,
+    text: c.text ?? "",
     created_at: c.created_at,
     updated_at: c.updated_at,
     author_name: c.profiles?.full_name ?? "Usuário Desconhecido",
@@ -53,7 +53,7 @@ export async function createComment(taskId: string, text: string): Promise<strin
     .insert({
       task_id: taskId,
       user_id: userId,
-      content: text.trim(),
+      text: text.trim(),
     })
     .select("id")
     .single()
@@ -72,7 +72,7 @@ export async function updateComment(id: string, text: string): Promise<void> {
   const { error } = await supabase
     .from("task_comments")
     .update({
-      content: text.trim(),
+      text: text.trim(),
     })
     .eq("id", id)
 

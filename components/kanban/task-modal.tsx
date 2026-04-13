@@ -537,10 +537,10 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
 
           {/* Descrição */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              <h3 className="font-semibold">Descrição</h3>
-            </div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
+                <h3 className="font-semibold">Descrição</h3>
+              </div>
             <Textarea
               value={editedTask.description || ""}
               onChange={(e) =>
@@ -556,7 +556,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           {(showLabelsSection || (editedTask.labels && editedTask.labels.length > 0)) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5" />
+              <Tag className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
               <h3 className="font-semibold">Etiquetas</h3>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -596,7 +596,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+                <Calendar className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
                 <h3 className="font-semibold">Data</h3>
               </div>
               <Input
@@ -611,7 +611,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+                <User className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
                 <h3 className="font-semibold">Responsável</h3>
               </div>
               <Select
@@ -670,7 +670,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           {(showProjectSection || !!editedTask.project) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <FolderKanban className="h-5 w-5" />
+              <FolderKanban className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
               <h3 className="font-semibold">Projeto</h3>
             </div>
             {editedTask.project ? (
@@ -771,7 +771,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           {(showMembersSection || (editedTask.members && editedTask.members.length > 0)) && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+                <Users className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
                 <h3 className="font-semibold">Membros</h3>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -834,7 +834,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           {(showChecklistSection || checklistItems.length > 0 || loadingChecklist) && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5" />
+              <CheckSquare className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
               <h3 className="font-semibold">Checklist</h3>
               {checklistItems.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
@@ -906,7 +906,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           {/* Comentários e atividade */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
+              <MessageSquare className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
               <h3 className="font-semibold">Comentários e atividade</h3>
             </div>
 

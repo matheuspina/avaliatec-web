@@ -5,7 +5,13 @@ export type ProjectStatusUI = string;
 
 type StatusMeta = { label: ProjectStatusUI; color: string };
 
+/** Metadados por valor da coluna legada `projects.status` (CHECK: backlog, todo, in_progress, review, done). */
 export const STATUS_META_MAP: Record<string, StatusMeta> = {
+  backlog: { label: "Planejamento", color: "#3B82F6" },
+  todo: { label: "A Fazer", color: "#6366F1" },
+  in_progress: { label: "Em andamento", color: "#10B981" },
+  review: { label: "Revisão", color: "#F59E0B" },
+  done: { label: "Concluído", color: "#6B7280" },
   planning: { label: "Planejamento", color: "#3B82F6" },
   active: { label: "Em andamento", color: "#10B981" },
   on_hold: { label: "Em espera", color: "#F59E0B" },
@@ -17,7 +23,7 @@ function getFallbackStatusMeta(status?: string): StatusMeta {
   if (status && STATUS_META_MAP[status]) {
     return STATUS_META_MAP[status];
   }
-  return STATUS_META_MAP.planning;
+  return STATUS_META_MAP.backlog;
 }
 
 export function mapDbStatusToUI(status?: string): ProjectStatusUI {
@@ -63,6 +69,17 @@ export type ProjectListItem = {
   statusColor: string | null;
   color: string | null;
 };
+
+/** Próximo código gerado no Supabase (RPC `next_project_code`), ex.: AV-2026-001 */
+export async function fetchNextProjectCode(): Promise<string> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("next_project_code");
+  if (error) throw error;
+  if (data == null || typeof data !== "string" || !data.trim()) {
+    throw new Error("Não foi possível obter o código do projeto.");
+  }
+  return data.trim();
+}
 
 export async function listProjects(params?: { search?: string; status?: string; clientId?: string }): Promise<ProjectListItem[]> {
   const supabase = createClient();
@@ -386,18 +403,33 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
 
   if (memberIds.size === 0) return [];
 
-  // Buscar perfis dos membros
-  const { data: profiles, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, role, avatar_url")
-    .in("id", Array.from(memberIds));
+  const ids = Array.from(memberIds);
 
-  if (error) throw error;
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, full_name, role, avatar_url")
+    .in("id", ids);
+
+  if (profilesError) throw profilesError;
+
+  const { data: appUsers, error: usersError } = await supabase
+    .from("users")
+    .select("auth_user_id, email")
+    .in("auth_user_id", ids);
+
+  if (usersError) throw usersError;
+
+  const emailById = new Map(
+    (appUsers ?? []).map((u: { auth_user_id: string; email: string | null }) => [
+      u.auth_user_id,
+      u.email ?? "",
+    ])
+  );
 
   return (profiles ?? []).map((profile) => ({
     id: profile.id,
     name: profile.full_name,
-    email: profile.email,
+    email: emailById.get(profile.id) ?? "",
     role: profile.role,
     avatarUrl: profile.avatar_url,
   }));

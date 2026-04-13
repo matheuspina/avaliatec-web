@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Plus, Search, LayoutGrid, List, Calendar as CalendarIcon, Loader2 } from "lucide-react"
-import { listProjects, createProject, type ProjectStatusUI } from "@/lib/data/projects"
+import { listProjects, createProject, fetchNextProjectCode, type ProjectStatusUI } from "@/lib/data/projects"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { listClients } from "@/lib/data/clients"
 import { useToast } from "@/hooks/use-toast"
@@ -63,6 +63,7 @@ export default function ProjetosPage() {
   const [newEndDate, setNewEndDate] = useState("")
   const [clients, setClients] = useState<ClientOption[]>([])
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [loadingProjectCode, setLoadingProjectCode] = useState(false)
 
   const loadProjects = useCallback(async () => {
     setLoading(true)
@@ -112,6 +113,36 @@ export default function ProjetosPage() {
       setClients((data ?? []).map((c) => ({ id: c.id, name: c.name })))
     })()
   }, [toast])
+
+  useEffect(() => {
+    if (!createDialogOpen) return
+    let cancelled = false
+    ;(async () => {
+      setLoadingProjectCode(true)
+      try {
+        const code = await fetchNextProjectCode()
+        if (!cancelled) setNewCode(code)
+      } catch (err) {
+        console.error("Erro ao gerar código do projeto:", err)
+        if (!cancelled) {
+          setNewCode("")
+          toast({
+            title: "Erro ao gerar código",
+            description:
+              err instanceof Error
+                ? err.message
+                : "Não foi possível obter o próximo código. Verifique a função next_project_code no Supabase.",
+            variant: "destructive",
+          })
+        }
+      } finally {
+        if (!cancelled) setLoadingProjectCode(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [createDialogOpen, toast])
 
   const [searchTerm, setSearchTerm] = useState("")
   const [view, setView] = useState<"list" | "grid">("grid")
@@ -171,7 +202,7 @@ export default function ProjetosPage() {
     if (!code || !name || !selectedClientId || !newEndDate) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha código, nome, cliente e prazo do projeto.",
+        description: "Preencha nome, cliente e prazo. Aguarde o código ser gerado se ainda estiver carregando.",
         variant: "destructive",
       })
       return
@@ -234,7 +265,17 @@ export default function ProjetosPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="code">Código</Label>
-                <Input id="code" placeholder="AV-2024-XXX" value={newCode} onChange={(e) => setNewCode(e.target.value)} />
+                <Input
+                  id="code"
+                  readOnly
+                  aria-readonly="true"
+                  placeholder={loadingProjectCode ? "Gerando código…" : "—"}
+                  value={newCode}
+                  className="cursor-default bg-muted/70 text-foreground"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Gerado automaticamente pelo sistema.
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="name">Nome</Label>
@@ -259,7 +300,11 @@ export default function ProjetosPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" onClick={handleSaveProject} disabled={saving}>
+              <Button
+                type="button"
+                onClick={handleSaveProject}
+                disabled={saving || loadingProjectCode || !newCode.trim()}
+              >
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {saving ? "Salvando..." : "Salvar Projeto"}
               </Button>

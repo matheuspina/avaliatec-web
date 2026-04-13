@@ -12,7 +12,10 @@ const Sidebar = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex h-full w-64 flex-col border-r bg-card", className)}
+    className={cn(
+      "flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar",
+      className
+    )}
     {...props}
   />
 ))
@@ -24,7 +27,10 @@ const SidebarHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center gap-2 border-b px-6 py-4", className)}
+    className={cn(
+      "flex items-center gap-2 border-b border-sidebar-border px-6 py-4",
+      className
+    )}
     {...props}
   />
 ))
@@ -79,18 +85,18 @@ const SidebarFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("mt-auto border-t px-3 py-4", className)}
+    className={cn("mt-auto border-t border-sidebar-border px-3 py-4", className)}
     {...props}
   />
 ))
 SidebarFooter.displayName = "SidebarFooter"
 
 const sidebarMenuItemVariants = cva(
-  "relative flex w-full items-center gap-3 rounded-[2px] px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-[linear-gradient(90deg,_#1e1e1e00,_#1e1e1e33)] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-[#59BE95] after:opacity-0 after:transition-opacity hover:after:opacity-100",
+  "relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-ring after:opacity-0 after:transition-opacity hover:after:opacity-100",
   {
     variants: {
       active: {
-        true: "bg-[linear-gradient(90deg,_#1e1e1e00,_#1e1e1e33)] text-foreground after:opacity-100",
+        true: "bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] text-foreground after:opacity-100",
         false: "text-muted-foreground",
       },
     },
