@@ -39,7 +39,7 @@ WHERE status IN ('connected', 'connecting');
 
 -- Index for auto-reply log queries (prevent duplicate auto-replies)
 CREATE INDEX IF NOT EXISTS idx_whatsapp_auto_reply_log_contact_date 
-ON whatsapp_auto_reply_log(contact_id, sent_at::date);
+ON whatsapp_auto_reply_log(contact_id, ((sent_at AT TIME ZONE 'UTC')::date));
 
 -- Index for quick message shortcut lookups (case-insensitive)
 CREATE INDEX IF NOT EXISTS idx_whatsapp_quick_messages_shortcut_lower 

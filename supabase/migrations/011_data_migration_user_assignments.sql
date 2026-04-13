@@ -42,13 +42,21 @@ WHERE created_by IS NOT NULL
 AND created_by IN (SELECT id FROM profiles)
 AND (team_members IS NULL OR team_members = '{}' OR NOT (created_by = ANY(team_members)));
 
--- Also add project_manager to team_members if different from creator
-UPDATE projects
-SET team_members = array_append(team_members, project_manager)
-WHERE project_manager IS NOT NULL
-AND project_manager IN (SELECT id FROM profiles)
-AND project_manager != created_by
-AND NOT (project_manager = ANY(team_members));
+-- Also add project_manager to team_members if different from creator (coluna opcional)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'projects' AND column_name = 'project_manager'
+  ) THEN
+    UPDATE projects
+    SET team_members = array_append(team_members, project_manager)
+    WHERE project_manager IS NOT NULL
+    AND project_manager IN (SELECT id FROM profiles)
+    AND project_manager != created_by
+    AND NOT (project_manager = ANY(team_members));
+  END IF;
+END $$;
 
 -- =====================================================
 -- 3. UPDATE TASKS WITH WATCHERS

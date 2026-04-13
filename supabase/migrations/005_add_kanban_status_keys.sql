@@ -17,11 +17,11 @@ END$$;
 UPDATE kanban_columns
 SET status_key = CASE
   WHEN status_key IS NOT NULL THEN status_key
-  WHEN lower(name) = 'a fazer' THEN 'todo'
-  WHEN lower(name) = 'em progresso' THEN 'in_progress'
-  WHEN lower(name) IN ('em revisão', 'em revisao') THEN 'review'
-  WHEN lower(name) IN ('concluído', 'concluido') THEN 'done'
-  WHEN lower(name) = 'backlog' THEN 'backlog'
+  WHEN lower(title) = 'a fazer' THEN 'todo'
+  WHEN lower(title) = 'em progresso' THEN 'in_progress'
+  WHEN lower(title) IN ('em revisão', 'em revisao') THEN 'review'
+  WHEN lower(title) IN ('concluído', 'concluido') THEN 'done'
+  WHEN lower(title) = 'backlog' THEN 'backlog'
   ELSE 'col_' || substr(id::text, 1, 8)
 END
 WHERE status_key IS NULL;
