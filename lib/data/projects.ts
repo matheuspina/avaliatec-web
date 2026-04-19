@@ -34,20 +34,22 @@ export function getFallbackStatusColor(status?: string): string {
   return getFallbackStatusMeta(status).color;
 }
 
+/** Mapeia rótulos da UI / project_statuses.name para slug em `projects.status` (constraint legada). */
 function mapUIStatusToDb(status?: string): string | undefined {
   switch (status) {
     case "Planejamento":
-      return "planning";
-    case "Em andamento":
-      return "active";
-    case "Em espera":
-      return "on_hold";
-    case "Concluído":
-      return "completed";
-    case "Cancelado":
-      return "cancelled";
     case "Orçamento":
-      return "planning";
+      return "backlog";
+    case "Em andamento":
+      return "in_progress";
+    case "Em espera":
+      return "todo";
+    case "Concluído":
+      return "done";
+    case "Cancelado":
+      return "done";
+    case "Revisão":
+      return "review";
     default:
       return undefined;
   }
@@ -148,12 +150,21 @@ export async function createProject(input: {
     teamMembers.push(userId);
   }
 
+  const { data: defaultStatusRow } = await supabase
+    .from("project_statuses")
+    .select("id")
+    .eq("name", "Planejamento")
+    .order("position", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
   const payload: any = {
     code: input.code,
     name: input.name,
     description: input.description ?? null,
     client_id: input.clientId,
-    status: mapUIStatusToDb(input.status) ?? "planning",
+    status: mapUIStatusToDb(input.status) ?? "backlog",
+    status_id: defaultStatusRow?.id ?? null,
     end_date: input.endDate ?? null,
     created_by: userId,
     team_members: teamMembers,
