@@ -225,9 +225,18 @@ export default function ProjetosPage() {
       await loadProjects()
     } catch (err) {
       console.error("Erro ao salvar projeto:", err)
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" &&
+              err !== null &&
+              "message" in err &&
+              typeof (err as { message: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : "Não foi possível criar o projeto."
       toast({
         title: "Erro ao salvar projeto",
-        description: err instanceof Error ? err.message : "Não foi possível criar o projeto.",
+        description: msg,
         variant: "destructive",
       })
     } finally {

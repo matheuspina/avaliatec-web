@@ -267,119 +267,97 @@ export type ProjectMember = {
 export async function getProjectDetails(projectId: string): Promise<ProjectDetails> {
   const supabase = createClient();
 
-  // Buscar dados do projeto com relacionamentos
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select(`
-      *,
-      clients:client_id(id, name, email, phone),
-      project_manager:project_manager(id, full_name, avatar_url),
-      created_by_user:created_by(id, full_name),
-      status_ref:project_statuses!projects_status_id_fkey(id, name, color)
-    `)
-    .eq("id", projectId)
-    .single();
+  const { data: raw, error } = await supabase.rpc("get_project_detail", { p_project_id: projectId });
+  if (error) throw error;
+  if (raw == null || typeof raw !== "object") throw new Error("Projeto não encontrado");
 
-  if (projectError) throw projectError;
-  if (!project) throw new Error("Projeto não encontrado");
-
-  // Buscar estatísticas de tarefas
-  const { data: tasks, error: tasksError } = await supabase
-    .from("tasks")
-    .select("id, status")
-    .eq("project_id", projectId);
-
-  if (tasksError) throw tasksError;
-
-  const totalTasks = tasks?.length ?? 0;
-  const completedTasks = tasks?.filter((t) => t.status === "done").length ?? 0;
+  const project = raw as Record<string, unknown>;
+  const stats = project.stats as Record<string, number> | null | undefined;
+  const totalTasks = stats?.total_tasks ?? 0;
+  const completedTasks = stats?.completed_tasks ?? 0;
   const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const totalFiles = stats?.total_files ?? 0;
 
-  // Buscar contagem de arquivos
-  const { count: filesCount, error: filesError } = await supabase
-    .from("files")
-    .select("*", { count: "exact", head: true })
-    .eq("project_id", projectId);
+  const statusSlug = project.status as string | undefined;
+  const statusRef = project.status_ref as { id?: string; name?: string; color?: string } | null | undefined;
+  const statusName = statusRef?.name ?? mapDbStatusToUI(statusSlug);
+  const statusColor = statusRef?.color ?? getFallbackStatusColor(statusSlug);
+  const statusId = (project.status_id as string | null | undefined) ?? statusRef?.id ?? null;
 
-  if (filesError) throw filesError;
-
-  const statusName = project.status_ref?.name ?? mapDbStatusToUI(project.status);
-  const statusColor = project.status_ref?.color ?? getFallbackStatusColor(project.status);
-  const statusId = project.status_id ?? project.status_ref?.id ?? null;
+  const clients = project.clients as {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+  } | null | undefined;
+  const pm = project.project_manager as {
+    id: string;
+    full_name: string;
+    avatar_url: string | null;
+  } | null | undefined;
+  const createdByUser = project.created_by_user as { id: string; full_name: string } | null | undefined;
+  const teamMembersRaw = project.team_members;
 
   return {
-    id: project.id,
-    code: project.code,
-    name: project.name,
-    description: project.description,
+    id: project.id as string,
+    code: project.code as string,
+    name: project.name as string,
+    description: (project.description as string | null) ?? null,
     status: statusName,
     statusId,
     statusColor,
-    priority: project.priority,
-    startDate: project.start_date,
-    endDate: project.end_date,
-    budget: project.budget,
-    progress: project.progress,
-    color: project.color,
-    teamMembers: project.team_members ?? [],
-    client: project.clients
+    priority: null,
+    startDate: null,
+    endDate: (project.end_date as string | null) ?? null,
+    budget: null,
+    progress: null,
+    color: (project.color as string | null) ?? null,
+    teamMembers: Array.isArray(teamMembersRaw) ? (teamMembersRaw as string[]) : [],
+    client: clients
       ? {
-          id: project.clients.id,
-          name: project.clients.name,
-          email: project.clients.email,
-          phone: project.clients.phone,
+          id: clients.id,
+          name: clients.name,
+          email: clients.email,
+          phone: clients.phone,
         }
       : null,
-    projectManager: project.project_manager
+    projectManager: pm
       ? {
-          id: project.project_manager.id,
-          name: project.project_manager.full_name,
-          avatar_url: project.project_manager.avatar_url,
+          id: pm.id,
+          name: pm.full_name,
+          avatar_url: pm.avatar_url,
         }
       : null,
-    createdBy: project.created_by_user
+    createdBy: createdByUser
       ? {
-          id: project.created_by_user.id,
-          name: project.created_by_user.full_name,
+          id: createdByUser.id,
+          name: createdByUser.full_name,
         }
       : null,
     stats: {
       totalTasks,
       completedTasks,
       completionPercentage,
-      totalFiles: filesCount ?? 0,
+      totalFiles,
     },
-    createdAt: project.created_at,
-    updatedAt: project.updated_at,
+    createdAt: project.created_at as string,
+    updatedAt: project.updated_at as string,
   };
 }
 
 export async function getProjectFiles(projectId: string): Promise<ProjectFile[]> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from("files")
-    .select(`
-      id,
-      name,
-      mime_type,
-      file_size,
-      file_path,
-      uploaded_by,
-      created_at,
-      uploader:uploaded_by(id, full_name)
-    `)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
-
+  const { data, error } = await supabase.rpc("list_project_files_for_project", { p_project_id: projectId });
   if (error) throw error;
 
-  return (data ?? []).map((file: any) => ({
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map((file: any) => ({
     id: file.id,
     name: file.name,
     mimeType: file.mime_type,
     fileSize: file.file_size,
-    filePath: file.file_path,
+    filePath: file.file_path ?? "",
     uploadedBy: file.uploader
       ? {
           id: file.uploader.id,
@@ -393,56 +371,16 @@ export async function getProjectFiles(projectId: string): Promise<ProjectFile[]>
 export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
   const supabase = createClient();
 
-  // Buscar membros únicos do projeto (através do project_manager e tasks)
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_manager")
-    .eq("id", projectId)
-    .single();
+  const { data, error } = await supabase.rpc("get_project_team_members", { p_project_id: projectId });
+  if (error) throw error;
 
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("assigned_to")
-    .eq("project_id", projectId);
-
-  // Coletar IDs únicos
-  const memberIds = new Set<string>();
-  if (project?.project_manager) memberIds.add(project.project_manager);
-  tasks?.forEach((task) => {
-    if (task.assigned_to) memberIds.add(task.assigned_to);
-  });
-
-  if (memberIds.size === 0) return [];
-
-  const ids = Array.from(memberIds);
-
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("id, full_name, role, avatar_url")
-    .in("id", ids);
-
-  if (profilesError) throw profilesError;
-
-  const { data: appUsers, error: usersError } = await supabase
-    .from("users")
-    .select("auth_user_id, email")
-    .in("auth_user_id", ids);
-
-  if (usersError) throw usersError;
-
-  const emailById = new Map(
-    (appUsers ?? []).map((u: { auth_user_id: string; email: string | null }) => [
-      u.auth_user_id,
-      u.email ?? "",
-    ])
-  );
-
-  return (profiles ?? []).map((profile) => ({
-    id: profile.id,
-    name: profile.full_name,
-    email: emailById.get(profile.id) ?? "",
-    role: profile.role,
-    avatarUrl: profile.avatar_url,
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map((m: { id: string; name: string; email?: string; role: string | null; avatar_url: string | null }) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email ?? "",
+    role: m.role,
+    avatarUrl: m.avatar_url,
   }));
 }
 
