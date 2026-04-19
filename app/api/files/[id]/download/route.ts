@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { withPermissionCheck } from '@/lib/middleware/api-protection'
 import { driveDownloadStream } from '@/lib/services/googleDriveService'
+import { resolveDriveFileForStream } from '@/lib/server/resolveDriveFileForStream'
 import { Readable } from 'stream'
 
 /**
@@ -9,6 +10,7 @@ import { Readable } from 'stream'
  *
  * Streams the file from Google Drive to the client.
  * Sets Content-Disposition: attachment so the browser downloads the file.
+ * [id] may be Supabase UUID or Google Drive file id (see resolveDriveFileForStream).
  */
 export async function GET(
   request: NextRequest,
@@ -19,40 +21,31 @@ export async function GET(
       const { id } = await params
       const supabase = await createClient()
 
-      // Resolve the Drive file ID from Supabase
-      const { data: file, error } = await supabase
-        .from('files')
-        .select('name, original_name, mime_type, external_file_id')
-        .eq('id', id)
-        .single()
+      const resolved = await resolveDriveFileForStream(supabase, id)
+      if (!resolved.ok) {
+        return NextResponse.json(resolved.json, { status: resolved.status })
+      }
 
-      if (error || !file) {
+      let stream: Readable
+      let mimeType: string
+      let name: string
+
+      try {
+        const result = await driveDownloadStream(resolved.externalId)
+        stream = result.stream
+        mimeType = result.mimeType
+        name = result.name
+      } catch {
         return NextResponse.json(
           { error: 'File not found', code: 'NOT_FOUND' },
           { status: 404 }
         )
       }
 
-      const externalId = (file as { external_file_id: string | null }).external_file_id
-      if (!externalId) {
-        return NextResponse.json(
-          { error: 'File has no external storage reference', code: 'NO_EXTERNAL_REF' },
-          { status: 422 }
-        )
-      }
+      const displayName = resolved.displayName || name
 
-      // Stream from Drive
-      const { stream, mimeType, name } = await driveDownloadStream(externalId)
-
-      const displayName =
-        (file as { original_name?: string }).original_name ||
-        (file as { name: string }).name ||
-        name
-
-      // Sanitize filename for Content-Disposition
       const safeFilename = displayName.replace(/[^\w.\-_ ]/g, '_')
 
-      // Convert Node.js Readable → Web ReadableStream for NextResponse
       const webStream = Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>
 
       return new NextResponse(webStream, {

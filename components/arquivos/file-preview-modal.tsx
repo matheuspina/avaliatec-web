@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import dynamic from "next/dynamic"
 import {
   Dialog,
   DialogContent,
@@ -9,14 +8,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Download, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import "@cyntler/react-doc-viewer/dist/index.css"
-
-const DocViewer = dynamic(
-  () => import("@cyntler/react-doc-viewer").then((m) => m.default),
-  { ssr: false, loading: () => <LoadingBlock /> }
-)
+import { OfficePreview } from "@/components/arquivos/office-preview"
 
 // ---------------------------------------------------------------------------
 // Types (aligned with page)
@@ -60,14 +54,6 @@ export function isFilePreviewable(file: PreviewDriveFile): boolean {
 
 function viewUrl(fileId: string): string {
   return `/api/files/${fileId}/view`
-}
-
-function LoadingBlock() {
-  return (
-    <div className="flex min-h-[320px] items-center justify-center bg-muted/30">
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-    </div>
-  )
 }
 
 // ---------------------------------------------------------------------------
@@ -161,12 +147,12 @@ export function FilePreviewModal({
       >
         {activeFile && (
           <>
-            <DialogHeader className="flex-shrink-0 border-b px-4 py-3 pr-12 text-left sm:px-6">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <DialogTitle className="truncate text-left text-base font-medium">
+            <DialogHeader className="flex-shrink-0 border-b px-4 py-3 pl-4 pr-14 text-left sm:px-6 sm:pr-16">
+              <div className="flex min-h-10 flex-nowrap items-center gap-3">
+                <DialogTitle className="min-w-0 flex-1 truncate text-left text-base font-medium">
                   {activeFile.name}
                 </DialogTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   {showGalleryChrome && galleryList.length > 0 && (
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {galleryIndex + 1} / {galleryList.length}
@@ -197,26 +183,11 @@ export function FilePreviewModal({
 
               {kind === "office" && (
                 <div className="h-[min(78vh,760px)] w-full overflow-auto">
-                  <DocViewer
-                    documents={[
-                      {
-                        uri: viewUrl(activeFile.id),
-                        fileName: activeFile.name,
-                      },
-                    ]}
-                    config={{
-                      header: {
-                        disableHeader: true,
-                      },
-                    }}
-                    theme={{
-                      primary: "hsl(var(--primary))",
-                      secondary: "hsl(var(--secondary))",
-                      tertiary: "hsl(var(--muted))",
-                      textPrimary: "hsl(var(--foreground))",
-                      textSecondary: "hsl(var(--muted-foreground))",
-                      textTertiary: "hsl(var(--muted-foreground))",
-                    }}
+                  <OfficePreview
+                    key={activeFile.id}
+                    fileId={activeFile.id}
+                    fileName={activeFile.name}
+                    mimeType={activeFile.mime_type}
                   />
                 </div>
               )}
