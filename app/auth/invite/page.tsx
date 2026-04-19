@@ -113,17 +113,25 @@ function InviteContent() {
   }
 
   const handleLogin = () => {
-    // Redirect to login with return URL to come back to this invite page
-    router.push(`/login?redirectTo=/auth/invite?token=${token}`)
+    if (!token) return
+    const returnPath = `/auth/invite?token=${encodeURIComponent(token)}`
+    router.push(`/login?redirectTo=${encodeURIComponent(returnPath)}`)
   }
 
   const handleMicrosoftLogin = async () => {
+    if (!token) return
     try {
+      const callback = new URL(`${window.location.origin}/auth/callback`)
+      callback.searchParams.set(
+        "next",
+        `/auth/invite?token=${encodeURIComponent(token)}`
+      )
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "azure",
         options: {
           scopes: "email Mail.Read Mail.ReadWrite offline_access",
-          redirectTo: `${window.location.origin}/auth/callback?next=/auth/invite?token=${token}`,
+          redirectTo: callback.toString(),
         },
       })
 

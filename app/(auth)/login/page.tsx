@@ -55,11 +55,21 @@ function LoginContent() {
     setLoading(true)
 
     try {
+      const callback = new URL(`${window.location.origin}/auth/callback`)
+      const returnPath = searchParams.get("redirectTo")
+      if (
+        returnPath &&
+        returnPath.startsWith("/") &&
+        !returnPath.startsWith("//")
+      ) {
+        callback.searchParams.set("next", returnPath)
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "azure",
         options: {
           scopes: "email Mail.Read Mail.ReadWrite offline_access",
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callback.toString(),
         },
       })
 

@@ -6,11 +6,13 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 WORKDIR /app
 
 FROM base AS deps
+ENV NODE_ENV=development
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
 FROM deps AS builder
+ENV NODE_ENV=production
 COPY . .
 RUN npm run build
 
