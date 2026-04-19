@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { listEventsByDate, createEvent, updateEvent, deleteEvent } from "@/lib/data/events"
 import { Protected } from "@/components/protected"
 import { usePermissions } from "@/contexts/permission-context"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 type User = {
   id: string
@@ -161,7 +162,7 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Agenda</h1>
@@ -337,6 +338,6 @@ export default function AgendaPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppMainBleed>
   )
 }

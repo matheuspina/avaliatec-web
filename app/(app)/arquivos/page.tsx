@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { AppMainBleed } from "@/components/app-main-bleed"
 import {
   Upload,
   Search,
@@ -107,7 +108,7 @@ export default function ArquivosPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Arquivos</h1>
@@ -274,6 +275,6 @@ export default function ArquivosPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AppMainBleed>
   )
 }

@@ -78,8 +78,13 @@ export function EmailViewer({ className }: EmailViewerProps) {
 
   if (loadingEmailDetail) {
     return (
-      <div className={cn("flex h-full items-center justify-center", className)}>
-        <div className="flex flex-col items-center gap-3">
+      <div
+        className={cn(
+          "flex h-full min-h-0 w-full min-w-0 items-center justify-center",
+          className
+        )}
+      >
+        <div className="flex flex-col items-center gap-3 text-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Loading email...</p>
         </div>
@@ -89,11 +94,18 @@ export function EmailViewer({ className }: EmailViewerProps) {
 
   if (!selectedEmail) {
     return (
-      <div className={cn("flex h-full items-center justify-center", className)}>
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Mail className="h-12 w-12 text-muted-foreground opacity-50" />
+      <div
+        className={cn(
+          "flex h-full min-h-0 w-full min-w-0 items-center justify-center",
+          className
+        )}
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex max-w-sm flex-col items-center gap-3 px-4 text-center">
+          <Mail className="h-12 w-12 shrink-0 text-muted-foreground opacity-50" aria-hidden />
           <p className="text-sm text-muted-foreground">
-            Select an email to view its content
+            Selecione um e-mail na lista ao lado para ver o conteúdo.
           </p>
         </div>
       </div>
@@ -104,7 +116,12 @@ export function EmailViewer({ className }: EmailViewerProps) {
   if (!selectedEmail.body || !selectedEmail.from) {
     console.error("Email missing required data:", selectedEmail)
     return (
-      <div className={cn("flex h-full items-center justify-center", className)}>
+      <div
+        className={cn(
+          "flex h-full min-h-0 w-full min-w-0 items-center justify-center",
+          className
+        )}
+      >
         <div className="flex flex-col items-center gap-3 text-center">
           <AlertCircle className="h-12 w-12 text-destructive opacity-50" />
           <p className="text-sm text-muted-foreground">
@@ -167,7 +184,12 @@ export function EmailViewer({ className }: EmailViewerProps) {
   // Show error state if rendering failed
   if (renderError) {
     return (
-      <div className={cn("flex h-full items-center justify-center", className)}>
+      <div
+        className={cn(
+          "flex h-full min-h-0 w-full min-w-0 items-center justify-center",
+          className
+        )}
+      >
         <div className="flex flex-col items-center gap-3 text-center">
           <AlertCircle className="h-12 w-12 text-destructive opacity-50" />
           <div>

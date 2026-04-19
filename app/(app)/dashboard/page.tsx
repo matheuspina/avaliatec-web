@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Users, Briefcase, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin } from "lucide-react"
 import { usePermissions } from "@/contexts/permission-context"
 import { SECTIONS } from "@/lib/types"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -40,12 +41,12 @@ export default function DashboardPage() {
   // Show loading state while checking permissions
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+      <AppMainBleed className="items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Carregando...</p>
         </div>
-      </div>
+      </AppMainBleed>
     )
   }
 
@@ -166,7 +167,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
@@ -289,6 +290,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppMainBleed>
   )
 }

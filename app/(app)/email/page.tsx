@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { AlertCircle, RefreshCw, Mail, Menu, ArrowLeft } from "lucide-react"
 import { usePermissions } from "@/contexts/permission-context"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 function EmailContent() {
   const { hasPermission } = usePermissions()
@@ -41,7 +42,7 @@ function EmailContent() {
   // Initial loading state
   if (loading && folders.length === 0) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-0rem)] overflow-hidden">
+      <AppMainBleed fillHeight className="flex-row overflow-hidden">
         {/* Folder Sidebar Skeleton */}
         <div className="w-full md:w-64 border-r bg-muted/10 p-4">
           <div className="mb-4 h-6 w-24 animate-pulse rounded bg-muted" />
@@ -71,14 +72,14 @@ function EmailContent() {
             <p className="text-sm text-muted-foreground">Loading emails...</p>
           </div>
         </div>
-      </div>
+      </AppMainBleed>
     )
   }
 
   // Error state
   if (error && folders.length === 0) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-0rem)] items-center justify-center">
+      <AppMainBleed className="items-center justify-center">
         <div className="flex max-w-md flex-col items-center gap-4 text-center">
           <div className="rounded-full bg-destructive/10 p-3">
             <AlertCircle className="h-8 w-8 text-destructive" />
@@ -97,14 +98,14 @@ function EmailContent() {
             </Button>
           </div>
         </div>
-      </div>
+      </AppMainBleed>
     )
   }
 
   // Empty state - no folders
   if (!loading && folders.length === 0) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-0rem)] items-center justify-center">
+      <AppMainBleed className="items-center justify-center">
         <div className="flex max-w-md flex-col items-center gap-4 text-center">
           <Mail className="h-12 w-12 text-muted-foreground opacity-50" />
           <div>
@@ -118,14 +119,14 @@ function EmailContent() {
             Refresh
           </Button>
         </div>
-      </div>
+      </AppMainBleed>
     )
   }
 
   // Mobile: Show full-screen email viewer when email is selected
   if (showMobileViewer && selectedEmail) {
     return (
-      <div className="-m-6 flex h-[calc(100vh-0rem)] flex-col md:hidden">
+      <AppMainBleed fillHeight className="flex-col md:hidden">
         {/* Mobile Header */}
         <div className="flex items-center gap-2 border-b bg-background p-3">
           <Button
@@ -140,23 +141,23 @@ function EmailContent() {
         </div>
 
         {/* Email Viewer */}
-        <div className="flex-1 overflow-hidden">
-          <EmailViewer />
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <EmailViewer className="h-full w-full" />
         </div>
-      </div>
+      </AppMainBleed>
     )
   }
 
   // Normal state with content (Desktop + Mobile list view)
   return (
-    <div className="-m-6 flex h-[calc(100vh-0rem)] overflow-hidden">
+    <AppMainBleed fillHeight className="flex-row overflow-hidden">
       {/* Desktop: Left Sidebar - Folders */}
       <div className="hidden md:block">
         <FolderSidebar />
       </div>
 
       {/* Main Content - Email List and Viewer */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 overflow-hidden">
         {/* Email List Panel */}
         <div className="w-full md:w-96 border-r">
           {/* Mobile Header with Menu Button */}
@@ -186,8 +187,8 @@ function EmailContent() {
         </div>
 
         {/* Desktop: Email Viewer */}
-        <div className="hidden md:block flex-1 overflow-hidden">
-          <EmailViewer className="h-full" />
+        <div className="hidden min-w-0 flex-1 overflow-hidden md:block">
+          <EmailViewer className="h-full w-full" />
         </div>
       </div>
 
@@ -211,7 +212,7 @@ function EmailContent() {
           </div>
         </div>
       )}
-    </div>
+    </AppMainBleed>
   )
 }
 

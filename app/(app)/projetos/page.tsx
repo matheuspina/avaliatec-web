@@ -32,6 +32,7 @@ import { listProjects, createProject, fetchNextProjectCode, type ProjectStatusUI
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { listClients } from "@/lib/data/clients"
 import { useToast } from "@/hooks/use-toast"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 type ProjectStatus = ProjectStatusUI
 
@@ -248,7 +249,7 @@ export default function ProjetosPage() {
     value ? new Date(value).toLocaleDateString("pt-BR") : "—"
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Projetos</h1>
@@ -434,6 +435,6 @@ export default function ProjetosPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </AppMainBleed>
   )
 }

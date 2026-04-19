@@ -26,6 +26,7 @@ import {
   WhatsAppQuickMessagesManager,
   WhatsAppRetryStatus
 } from "@/components/whatsapp"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 function AtendimentoContent() {
   const { 
@@ -46,19 +47,19 @@ function AtendimentoContent() {
   // Show loading state while initial data is being fetched
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+      <AppMainBleed className="items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Carregando WhatsApp...</p>
         </div>
-      </div>
+      </AppMainBleed>
     )
   }
 
   // Show connect button when no instances exist
   if (instances.length === 0) {
     return (
-      <div className="space-y-6">
+      <AppMainBleed className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Atendimento</h1>
           <p className="text-muted-foreground">
@@ -97,14 +98,14 @@ function AtendimentoContent() {
             setShowConnectionModal(false)
           }}
         />
-      </div>
+      </AppMainBleed>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed fillHeight className="gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex shrink-0 items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Atendimento</h1>
           <p className="text-muted-foreground">
@@ -174,7 +175,7 @@ function AtendimentoContent() {
       </div>
 
       {/* Instance Selector and Retry Status */}
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-4">
         <WhatsAppInstanceSelector className="max-w-sm" />
         {retryQueueSize > 0 && (
           <WhatsAppRetryStatus className="max-w-md" />
@@ -183,7 +184,7 @@ function AtendimentoContent() {
 
       {/* Error Display */}
       {error && (
-        <Card className="border-destructive">
+        <Card className="shrink-0 border-destructive">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -206,7 +207,7 @@ function AtendimentoContent() {
       )}
 
       {/* Three-column layout */}
-      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-280px)]">
+      <div className="grid min-h-0 flex-1 grid-cols-12 gap-4">
         {/* Left column - Contact List */}
         <div className="col-span-12 lg:col-span-3">
           <Card className="h-full">
@@ -252,7 +253,7 @@ function AtendimentoContent() {
           setShowConnectionModal(false)
         }}
       />
-    </div>
+    </AppMainBleed>
   )
 }
 

@@ -173,7 +173,7 @@ export function EmailListPanel({ className, onEmailSelect }: EmailListPanelProps
       {/* Email List */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         role="list"
         aria-label="Email list"
       >
@@ -188,11 +188,16 @@ export function EmailListPanel({ className, onEmailSelect }: EmailListPanelProps
             ))}
           </div>
         ) : emails.length === 0 ? (
-          // Empty state
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Mail className="h-12 w-12 text-muted-foreground opacity-50" />
-            <p className="mt-4 text-sm text-muted-foreground">
-              {searchQuery ? "No emails found matching your search" : "No emails in this folder"}
+          // Empty state: parent must be flex column so flex-1 + center fills the column
+          <div
+            className="flex w-full min-w-0 flex-1 flex-col items-center justify-center px-4 py-12 text-center"
+            role="status"
+          >
+            <Mail className="h-12 w-12 shrink-0 text-muted-foreground opacity-50" aria-hidden />
+            <p className="mt-4 max-w-xs text-sm text-muted-foreground">
+              {searchQuery
+                ? "Nenhum e-mail encontrado para sua busca"
+                : "Nenhum e-mail nesta pasta"}
             </p>
           </div>
         ) : (

@@ -38,6 +38,7 @@ import {
   type ClientSummary,
 } from "@/lib/data/clients"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 const sanitizeDigits = (value: string) => value.replace(/\D/g, "")
 
@@ -371,7 +372,7 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Clientes</h1>
@@ -805,6 +806,6 @@ export default function ClientesPage() {
         confirmText="Excluir"
         variant="destructive"
       />
-    </div>
+    </AppMainBleed>
   )
 }

@@ -27,6 +27,7 @@ import {
   type ProjectStatus,
 } from "@/lib/data/project-statuses"
 import { useToast } from "@/hooks/use-toast"
+import { AppMainBleed } from "@/components/app-main-bleed"
 
 export default function ConfiguracoesPage() {
   const { toast } = useToast()
@@ -178,7 +179,7 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AppMainBleed className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Configurações</h1>
         <p className="text-muted-foreground">
@@ -478,6 +479,6 @@ export default function ConfiguracoesPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </AppMainBleed>
   )
 }
