@@ -6,7 +6,6 @@
  * 
  * Requirements covered:
  * - 4.6: Add retry mechanism for failed message sends
- * - 12.8: Handle Evolution API connection errors gracefully
  */
 
 export interface RetryOptions {
@@ -330,8 +329,3 @@ export class CircuitBreaker {
     this.state = 'closed'
   }
 }
-
-/**
- * Global circuit breaker for Evolution API
- */
-export const evolutionApiCircuitBreaker = new CircuitBreaker(3, 30000) // 3 failures, 30 second recovery

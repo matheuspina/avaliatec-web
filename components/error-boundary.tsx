@@ -24,7 +24,7 @@ interface State {
  * logs those errors, and displays a fallback UI instead of the component tree that crashed.
  * 
  * Requirements covered:
- * - 4.6: Handle Evolution API connection errors gracefully
+ * - 4.6: Handle errors gracefully
  * - 12.8: Log errors to console for debugging
  */
 export class ErrorBoundary extends Component<Props, State> {

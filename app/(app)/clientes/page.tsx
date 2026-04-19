@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Protected } from "@/components/protected"
 import { usePermissions } from "@/contexts/permission-context"
@@ -28,14 +29,13 @@ import {
 } from "@/components/ui/table"
 import { Plus, Search, Edit, Trash2, Eye, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import type { Client } from "@/lib/types"
+import type { Client, ClientListMetrics } from "@/lib/types"
 import {
   listClients,
   createClientRecord,
   updateClientRecord,
   deleteClientRecord,
-  getClientSummary,
-  type ClientSummary,
+  getClientsListMetrics,
 } from "@/lib/data/clients"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AppMainBleed } from "@/components/app-main-bleed"
@@ -89,10 +89,17 @@ type AddressSuggestion = {
   description?: string
 }
 
+const formatCurrency = (value: number | null | undefined) =>
+  value == null
+    ? "—"
+    : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value)
+
 export default function ClientesPage() {
   const { toast } = useToast()
   const { hasPermission } = usePermissions()
+  const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
+  const [metrics, setMetrics] = useState<Record<string, ClientListMetrics>>({})
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -117,12 +124,6 @@ export default function ClientesPage() {
   const [editAddressSuggestions, setEditAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [editAddressLoading, setEditAddressLoading] = useState(false)
 
-  // View dialog state
-  const [viewOpen, setViewOpen] = useState(false)
-  const [viewLoading, setViewLoading] = useState(false)
-  const [viewSummary, setViewSummary] = useState<ClientSummary | null>(null)
-  const [viewClient, setViewClient] = useState<Client | null>(null)
-
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
@@ -142,11 +143,17 @@ export default function ClientesPage() {
 
   async function fetchClients() {
     setLoading(true)
-    const { data, error } = await listClients(searchTerm)
-    if (error) {
-      toast({ title: "Erro ao carregar clientes", description: error, variant: "destructive" })
+    const [clientsResult, metricsResult] = await Promise.all([
+      listClients(searchTerm),
+      getClientsListMetrics(),
+    ])
+    if (clientsResult.error) {
+      toast({ title: "Erro ao carregar clientes", description: clientsResult.error, variant: "destructive" })
     } else {
-      setClients(data)
+      setClients(clientsResult.data)
+    }
+    if (!metricsResult.error) {
+      setMetrics(metricsResult.data)
     }
     setLoading(false)
   }
@@ -329,28 +336,7 @@ export default function ClientesPage() {
     fetchClients()
   }
 
-  async function openViewClient(client: Client) {
-    setViewClient(client)
-    setViewOpen(true)
-    setViewSummary(null)
-    setViewLoading(true)
-    const { data, error } = await getClientSummary(client.id)
-    if (error) {
-      toast({ title: "Erro ao carregar resumo", description: error, variant: "destructive" })
-    } else if (data) {
-      setViewSummary(data)
-    }
-    setViewLoading(false)
-  }
 
-  const handleViewOpenChange = (openDialog: boolean) => {
-    setViewOpen(openDialog)
-    if (!openDialog) {
-      setViewSummary(null)
-      setViewClient(null)
-      setViewLoading(false)
-    }
-  }
 
   function requestDeleteClient(client: Client) {
     setClientToDelete(client)
@@ -495,19 +481,33 @@ export default function ClientesPage() {
                 <TableHead>CNPJ / CPF</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
+                <TableHead>Cliente desde</TableHead>
+                <TableHead>Total vendido</TableHead>
+                <TableHead>Última venda</TableHead>
                 <TableHead className="w-[140px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClients.map((client) => (
+              {filteredClients.map((client) => {
+                const m = metrics[client.id]
+                return (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.document ? formatDocument(client.document) : "—"}</TableCell>
                   <TableCell>{client.email}</TableCell>
                   <TableCell>{client.phone ? formatPhone(client.phone) : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {m ? formatDate(m.client_since) : "—"}
+                  </TableCell>
+                  <TableCell className="font-medium text-sm">
+                    {m ? formatCurrency(m.total_completed_revenue) : "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {m?.last_sale_date ? formatDate(m.last_sale_date) : "—"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => openViewClient(client)} aria-label="Ver detalhes do cliente">
+                      <Button variant="ghost" size="icon" onClick={() => router.push(`/clientes/${client.id}`)} aria-label="Ver perfil CRM do cliente">
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Protected section="clientes" action="edit">
@@ -523,7 +523,7 @@ export default function ClientesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </CardContent>
@@ -603,187 +603,6 @@ export default function ClientesPage() {
           </div>
           <DialogFooter>
             <Button type="button" onClick={handleUpdateClient}>Salvar Alterações</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Dialog */}
-      <Dialog open={viewOpen} onOpenChange={handleViewOpenChange}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>{viewClient?.name ?? "Resumo do cliente"}</DialogTitle>
-            <DialogDescription>
-              Veja os dados de cadastro, projetos e tarefas vinculadas a este cliente.
-            </DialogDescription>
-          </DialogHeader>
-
-          {viewLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : viewSummary ? (
-            <div className="space-y-6">
-              <section className="rounded-xl border border-border/50 bg-card/40 p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                    Dados do cliente
-                  </h4>
-                  <Badge variant="outline" className="capitalize">
-                    {viewSummary.client.type === "company" ? "Empresa" : "Pessoa Física"}
-                  </Badge>
-                </div>
-                <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">CNPJ / CPF</p>
-                    <p>{viewSummary.client.document ? formatDocument(viewSummary.client.document) : "—"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Telefone</p>
-                    <p>{viewSummary.client.phone ? formatPhone(viewSummary.client.phone) : "—"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p>
-                    <p className="break-all">{viewSummary.client.email || "—"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tipo</p>
-                    <p>{viewSummary.client.type === "company" ? "Empresa" : "Pessoa Física"}</p>
-                  </div>
-                  <div className="space-y-1 sm:col-span-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço</p>
-                    <p>{viewSummary.client.address || "—"}</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-xl border border-border/50 bg-card/40 p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h4 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                      Projetos vinculados
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {viewSummary.projects.length} {viewSummary.projects.length === 1 ? "projeto" : "projetos"}
-                    </p>
-                  </div>
-                </div>
-                {viewSummary.projects.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum projeto cadastrado para este cliente.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {viewSummary.projects.map((project) => (
-                      <Link
-                        key={project.id}
-                        href={`/projetos/${project.id}`}
-                        className="block rounded-lg border border-border/40 bg-background/60 p-4 transition hover:border-primary/60 hover:bg-background/80"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0 space-y-1">
-                            <p className="text-sm font-semibold leading-tight line-clamp-2">
-                              {project.title || "Projeto sem título"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Código: {project.code ?? "—"}</p>
-                          </div>
-                          {project.status && (
-                            <Badge
-                              variant="outline"
-                              className="capitalize"
-                              style={getStatusBadgeStyle(project.statusColor)}
-                            >
-                              {project.status}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          Prazo: {formatDate(project.deadline)}
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-xl border border-border/50 bg-card/40 p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h4 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                      Tarefas relacionadas
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {viewSummary.tasks.length} {viewSummary.tasks.length === 1 ? "tarefa" : "tarefas"}
-                    </p>
-                  </div>
-                </div>
-                {viewSummary.tasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhuma tarefa vinculada aos projetos deste cliente.
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tarefa</TableHead>
-                        <TableHead>Projeto</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Prazo</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {viewSummary.tasks.map((task) => {
-                        const taskLink = task.project_id ? `/projetos/${task.project_id}` : undefined
-                        return (
-                          <TableRow key={task.id} className={taskLink ? "cursor-pointer hover:bg-accent/40" : undefined}>
-                            <TableCell className="font-medium">
-                              {taskLink ? (
-                                <Link href={taskLink} className="text-foreground underline-offset-4 hover:underline">
-                                  {task.title}
-                                </Link>
-                              ) : (
-                                task.title
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {task.project_id ? (
-                                <Link href={`/projetos/${task.project_id}`} className="text-muted-foreground underline-offset-4 hover:underline">
-                                  {task.project_title ?? "—"}
-                                </Link>
-                              ) : (
-                                task.project_title ?? "—"
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {task.status ? (
-                                <Badge
-                                  variant="outline"
-                                  className="capitalize"
-                                  style={getStatusBadgeStyle(task.statusColor)}
-                                >
-                                  {task.status}
-                                </Badge>
-                              ) : (
-                                "—"
-                              )}
-                            </TableCell>
-                            <TableCell>{formatDate(task.deadline)}</TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                )}
-              </section>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Não foi possível carregar os dados do cliente. Tente novamente.
-            </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleViewOpenChange(false)}>
-              Fechar
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

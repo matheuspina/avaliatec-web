@@ -241,6 +241,46 @@ export type Permission = {
   delete: boolean
 }
 
+// ─── CRM types ───────────────────────────────────────────────────────────────
+
+/** Light metrics returned for every client in the list view (one RPC round-trip). */
+export type ClientListMetrics = {
+  client_since: string
+  total_completed_revenue: number
+  last_sale_date: string | null
+  total_projects: number
+  completed_projects: number
+  active_projects: number
+}
+
+/** A project row embedded in the client CRM detail response. */
+export type ClientCrmProject = {
+  id: string
+  code: string
+  name: string
+  status: string
+  status_name: string
+  status_color: string | null
+  end_date: string | null
+  actual_value: number | null
+  estimated_value: number | null
+  completed_at: string | null
+  created_at: string
+}
+
+/** Full CRM detail for a single client (from get_client_crm_detail RPC). */
+export type ClientCrmDetail = {
+  client_since: string
+  total_revenue_all_time: number
+  last_sale_date: string | null
+  first_sale_date: string | null
+  total_projects: number
+  completed_projects: number
+  active_projects: number
+  next_deadline: string | null
+  projects: ClientCrmProject[]
+}
+
 export type UserPermissions = {
   [sectionKey: string]: Permission
 }
@@ -251,7 +291,6 @@ export type SectionKey =
   | 'projetos'
   | 'kanban'
   | 'agenda'
-  | 'atendimento'
   | 'arquivos'
   | 'email'
   | 'configuracoes'
@@ -289,12 +328,6 @@ export const SECTIONS = {
     path: '/agenda',
     icon: 'Calendar'
   },
-  atendimento: {
-    key: 'atendimento' as const,
-    label: 'Atendimento',
-    path: '/atendimento',
-    icon: 'WhatsAppIcon'
-  },
   arquivos: {
     key: 'arquivos' as const,
     label: 'Arquivos',
@@ -328,15 +361,14 @@ export const DEFAULT_GROUPS = [
       projetos: { view: true, create: true, edit: true, delete: true },
       kanban: { view: true, create: true, edit: true, delete: true },
       agenda: { view: true, create: true, edit: true, delete: true },
-      atendimento: { view: true, create: true, edit: true, delete: true },
       arquivos: { view: true, create: true, edit: true, delete: true },
       email: { view: true, create: true, edit: true, delete: true },
       configuracoes: { view: true, create: true, edit: true, delete: true }
     }
   },
   {
-    name: 'Atendimento',
-    description: 'Acesso a atendimento e visualização de projetos',
+    name: 'Usuário',
+    description: 'Acesso padrão ao sistema',
     is_default: true,
     permissions: {
       dashboard: { view: true, create: false, edit: false, delete: false },
@@ -344,7 +376,6 @@ export const DEFAULT_GROUPS = [
       projetos: { view: true, create: false, edit: false, delete: false },
       kanban: { view: true, create: false, edit: false, delete: false },
       agenda: { view: true, create: true, edit: true, delete: false },
-      atendimento: { view: true, create: true, edit: true, delete: false },
       arquivos: { view: true, create: false, edit: false, delete: false },
       email: { view: true, create: true, edit: false, delete: false },
       configuracoes: { view: false, create: false, edit: false, delete: false }
@@ -375,120 +406,4 @@ export class UserSyncError extends Error {
   }
 }
 
-// WhatsApp Types
 
-export type WhatsAppInstance = {
-  id: string
-  instance_name: string
-  instance_token: string
-  phone_number: string | null
-  display_name: string
-  status: 'disconnected' | 'connecting' | 'connected' | 'qr_code'
-  qr_code: string | null
-  qr_code_updated_at: string | null
-  webhook_url: string | null
-  created_by: string | null
-  created_at: string
-  updated_at: string
-  connected_at: string | null
-  last_seen_at: string | null
-}
-
-export type WhatsAppContact = {
-  id: string
-  instance_id: string
-  remote_jid: string
-  phone_number: string
-  name: string | null
-  profile_picture_url: string | null
-  contact_type: 'cliente' | 'lead' | 'profissional' | 'prestador' | 'unknown'
-  client_id: string | null
-  last_message_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export type WhatsAppMessage = {
-  id: string
-  instance_id: string
-  contact_id: string
-  message_id: string
-  remote_jid: string
-  from_me: boolean
-  message_type: 'text' | 'audio' | 'image' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'other'
-  text_content: string | null
-  media_url: string | null
-  media_mime_type: string | null
-  media_size: number | null
-  media_filename: string | null
-  quoted_message_id: string | null
-  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
-  timestamp: string
-  created_at: string
-}
-
-export type WhatsAppQuickMessage = {
-  id: string
-  shortcut: string
-  message_text: string
-  description: string | null
-  created_by: string | null
-  created_at: string
-  updated_at: string
-}
-
-export type WhatsAppInstanceSettings = {
-  id: string
-  instance_id: string
-  reject_calls: boolean
-  reject_call_message: string | null
-  ignore_groups: boolean
-  always_online: boolean
-  read_messages: boolean
-  read_status: boolean
-  auto_reply_enabled: boolean
-  auto_reply_message: string | null
-  availability_schedule: AvailabilitySchedule
-  created_at: string
-  updated_at: string
-}
-
-export type AvailabilitySchedule = {
-  [day: string]: {
-    enabled: boolean
-    start: string // HH:mm
-    end: string // HH:mm
-  }
-}
-
-export type WhatsAppAutoReplyLog = {
-  id: string
-  instance_id: string
-  contact_id: string
-  message_sent: string
-  sent_at: string
-}
-
-export type WebhookData = {
-  event: string
-  instance: string
-  data: any
-  destination: string
-  date_time: string
-  sender: string
-  server_url: string
-  apikey: string
-}
-
-// WhatsApp Error Classes
-
-export class WhatsAppServiceError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: any
-  ) {
-    super(message)
-    this.name = 'WhatsAppServiceError'
-  }
-}

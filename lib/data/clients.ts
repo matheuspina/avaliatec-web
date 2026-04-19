@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import type { Client } from '@/lib/types'
+import type { Client, ClientListMetrics, ClientCrmDetail } from '@/lib/types'
 import { getFallbackStatusColor, mapDbStatusToUI } from '@/lib/data/projects'
 
 async function getCurrentUserId(): Promise<string | null> {
@@ -244,4 +244,42 @@ export async function getClientSummary(clientId: string): Promise<{ data: Client
     },
     error: null,
   }
+}
+
+/** Returns light CRM metrics keyed by client id for all accessible clients. */
+export async function getClientsListMetrics(): Promise<{
+  data: Record<string, ClientListMetrics>
+  error: string | null
+}> {
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase.rpc('get_clients_list_metrics')
+  if (error) return { data: {}, error: error.message }
+  return { data: (data as Record<string, ClientListMetrics>) ?? {}, error: null }
+}
+
+/** Returns full CRM detail for a single client (includes embedded project list). */
+export async function getClientCrmDetail(clientId: string): Promise<{
+  data: ClientCrmDetail | null
+  error: string | null
+}> {
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase.rpc('get_client_crm_detail', {
+    p_client_id: clientId,
+  })
+  if (error) return { data: null, error: error.message }
+  return { data: (data as ClientCrmDetail) ?? null, error: null }
+}
+
+/** Returns a single client record by id. */
+export async function getClientById(clientId: string): Promise<{
+  data: Client | null
+  error: string | null
+}> {
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .single()
+  return { data: (data as Client) ?? null, error: error?.message ?? null }
 }

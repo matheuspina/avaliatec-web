@@ -15,9 +15,7 @@
     "db:pull": "supabase db pull",
     "db:reset": "supabase db reset",
     "supabase:link": "supabase link",
-    "supabase:login": "supabase login",
-    "whatsapp:match-clients": "npx tsx scripts/match-clients.ts",
-    "whatsapp:match-stats": "npx tsx scripts/match-clients.ts --stats-only"
+    "supabase:login": "supabase login"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

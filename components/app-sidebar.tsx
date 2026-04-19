@@ -13,7 +13,6 @@ import {
   Mail,
   LogOut,
 } from "lucide-react"
-import { WhatsAppIcon } from "@/components/icons/whatsapp-icon"
 import {
   Sidebar,
   SidebarHeader,
@@ -62,12 +61,6 @@ const menuItems = [
     href: "/agenda",
     icon: Calendar,
     sectionKey: "agenda" as SectionKey,
-  },
-  {
-    title: "Atendimento",
-    href: "/atendimento",
-    icon: WhatsAppIcon,
-    sectionKey: "atendimento" as SectionKey,
   },
   {
     title: "Arquivos",

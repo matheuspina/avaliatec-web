@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { EvolutionApiError } from '@/lib/services/evolutionApiClient'
 
 /**
  * API Error Handler Utilities
@@ -46,14 +45,7 @@ export const API_ERROR_CODES = {
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
   DATABASE_ERROR: 'DATABASE_ERROR',
   EXTERNAL_API_ERROR: 'EXTERNAL_API_ERROR',
-  TIMEOUT: 'TIMEOUT',
-  
-  // WhatsApp specific errors
-  INSTANCE_NOT_FOUND: 'INSTANCE_NOT_FOUND',
-  INSTANCE_NOT_CONNECTED: 'INSTANCE_NOT_CONNECTED',
-  CONTACT_NOT_FOUND: 'CONTACT_NOT_FOUND',
-  MESSAGE_SEND_FAILED: 'MESSAGE_SEND_FAILED',
-  EVOLUTION_API_ERROR: 'EVOLUTION_API_ERROR'
+  TIMEOUT: 'TIMEOUT'
 } as const
 
 /**
@@ -92,64 +84,13 @@ export function logApiError(
     timestamp: new Date().toISOString()
   }
 
-  if (error instanceof EvolutionApiError) {
-    console.error(`Evolution API Error [${context.endpoint}]:`, {
-      ...errorInfo,
-      evolutionApiDetails: {
-        statusCode: error.statusCode,
-        response: error.response
-      }
-    })
-  } else {
-    console.error(`API Error [${context.endpoint}]:`, errorInfo)
-  }
+  console.error(`API Error [${context.endpoint}]:`, errorInfo)
 }
 
 /**
  * Convert various error types to standardized API error
  */
 export function normalizeApiError(error: unknown, context: ApiErrorContext): ApiError {
-  // Handle Evolution API errors
-  if (error instanceof EvolutionApiError) {
-    let code: keyof typeof API_ERROR_CODES = 'EVOLUTION_API_ERROR'
-    let message = error.message
-
-    switch (error.statusCode) {
-      case 400:
-        code = 'INVALID_INPUT'
-        message = 'Invalid request data'
-        break
-      case 401:
-        code = 'UNAUTHORIZED'
-        message = 'Evolution API authentication failed'
-        break
-      case 403:
-        code = 'FORBIDDEN'
-        message = 'Access denied by Evolution API'
-        break
-      case 404:
-        code = 'NOT_FOUND'
-        message = 'Resource not found in Evolution API'
-        break
-      case 429:
-        code = 'RATE_LIMITED'
-        message = 'Rate limit exceeded'
-        break
-      case 500:
-      case 502:
-      case 503:
-      case 504:
-        code = 'SERVICE_UNAVAILABLE'
-        message = 'WhatsApp service is temporarily unavailable'
-        break
-    }
-
-    return createApiError(message, code, error.statusCode, {
-      originalError: error.message,
-      evolutionApiResponse: error.response
-    })
-  }
-
   // Handle network/fetch errors
   if (error instanceof TypeError && error.message.includes('fetch')) {
     return createApiError(
@@ -330,11 +271,6 @@ export function createSuccessResponse<T>(
  * User-friendly error messages for common scenarios
  */
 export const USER_FRIENDLY_MESSAGES = {
-  [API_ERROR_CODES.INSTANCE_NOT_FOUND]: 'A instância do WhatsApp não foi encontrada. Ela pode ter sido removida.',
-  [API_ERROR_CODES.INSTANCE_NOT_CONNECTED]: 'A instância do WhatsApp não está conectada. Conecte-a para continuar.',
-  [API_ERROR_CODES.CONTACT_NOT_FOUND]: 'O contato não foi encontrado.',
-  [API_ERROR_CODES.MESSAGE_SEND_FAILED]: 'Não foi possível enviar a mensagem. Tente novamente.',
-  [API_ERROR_CODES.EVOLUTION_API_ERROR]: 'Erro na comunicação com o WhatsApp. Tente novamente.',
   [API_ERROR_CODES.SERVICE_UNAVAILABLE]: 'O serviço está temporariamente indisponível. Tente novamente em alguns minutos.',
   [API_ERROR_CODES.RATE_LIMITED]: 'Muitas tentativas. Aguarde um momento antes de tentar novamente.',
   [API_ERROR_CODES.UNAUTHORIZED]: 'Você não tem permissão para realizar esta ação.',
