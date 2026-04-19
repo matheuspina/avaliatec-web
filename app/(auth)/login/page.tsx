@@ -94,7 +94,7 @@ function LoginContent() {
             priority
           />
         </div>
-        <div className="w-full rounded-lg border border-border/20 backdrop-blur-sm shadow-lg overflow-hidden">
+        <div className="relative w-full rounded-lg backdrop-blur-sm shadow-lg overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background/95" />
           <form onSubmit={handleLogin} className="relative space-y-4 p-6">
             <div className="space-y-2">
