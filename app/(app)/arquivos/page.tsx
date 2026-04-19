@@ -36,7 +36,6 @@ import {
   Folder,
   ChevronRight,
   MoreVertical,
-  ExternalLink,
   Loader2,
   AlertCircle,
   HardDrive,
@@ -44,6 +43,10 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  FilePreviewModal,
+  isFilePreviewable,
+} from "@/components/arquivos/file-preview-modal"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -154,6 +157,9 @@ export default function ArquivosPage() {
   const [renameName, setRenameName] = useState("")
   const [, startRenameTransition] = useTransition()
 
+  // Preview modal
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null)
+
   // ---------------------------------------------------------------------------
   // Data fetching
   // ---------------------------------------------------------------------------
@@ -255,7 +261,7 @@ export default function ArquivosPage() {
   // Download
   // ---------------------------------------------------------------------------
 
-  function downloadFile(file: DriveFile) {
+  function downloadFile(file: { id: string }) {
     window.open(`/api/files/${file.id}/download`, "_blank")
   }
 
@@ -545,6 +551,11 @@ export default function ArquivosPage() {
                           onDownload={() => downloadFile(file)}
                           onRename={() => openRename(file)}
                           onDelete={() => setDeleteTarget(file)}
+                          onPreview={
+                            isFilePreviewable(file)
+                              ? () => setPreviewFile(file)
+                              : undefined
+                          }
                         />
                       ))}
                     </div>
@@ -565,6 +576,14 @@ export default function ArquivosPage() {
         description={`Tem certeza que deseja excluir "${deleteTarget?.name}"? Esta ação não pode ser desfeita.`}
         confirmText={deleting ? "Excluindo…" : "Excluir"}
         variant="destructive"
+      />
+
+      <FilePreviewModal
+        open={!!previewFile}
+        onOpenChange={(open) => !open && setPreviewFile(null)}
+        initialFile={previewFile}
+        directoryFiles={files}
+        onDownload={downloadFile}
       />
 
       {/* Rename dialog */}
@@ -648,33 +667,39 @@ function FileRow({
   onDownload,
   onRename,
   onDelete,
+  onPreview,
 }: {
   file: DriveFile
   onDownload: () => void
   onRename: () => void
   onDelete: () => void
+  onPreview?: () => void
 }) {
+  const canPreview = Boolean(onPreview)
+
+  const nameBlock = (
+    <>
+      <span className="flex-shrink-0">{getFileIcon(file.mime_type)}</span>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium leading-tight">{file.name}</p>
+      </div>
+    </>
+  )
+
   return (
     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-4 py-3 transition-colors hover:bg-accent/30">
       {/* Name + icon */}
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span className="flex-shrink-0">{getFileIcon(file.mime_type)}</span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium leading-tight">{file.name}</p>
-          {file.web_view_link && (
-            <a
-              href={file.web_view_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary"
-            >
-              <ExternalLink className="h-2.5 w-2.5" />
-              Abrir no Drive
-            </a>
-          )}
-        </div>
-      </div>
+      {canPreview ? (
+        <button
+          type="button"
+          onClick={onPreview}
+          className="flex min-w-0 items-center gap-2.5 rounded-md text-left outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {nameBlock}
+        </button>
+      ) : (
+        <div className="flex min-w-0 items-center gap-2.5">{nameBlock}</div>
+      )}
 
       {/* Size */}
       <span className="w-20 text-right text-xs text-muted-foreground">
@@ -699,14 +724,6 @@ function FileRow({
               <Download className="mr-2 h-4 w-4" />
               Baixar
             </DropdownMenuItem>
-            {file.web_view_link && (
-              <DropdownMenuItem
-                onClick={() => window.open(file.web_view_link!, "_blank")}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Abrir no Drive
-              </DropdownMenuItem>
-            )}
             <Protected section="arquivos" action="edit">
               <DropdownMenuItem onClick={onRename}>
                 <Pencil className="mr-2 h-4 w-4" />
