@@ -114,7 +114,25 @@ export type FileItem = {
   project_id: string | null
   uploaded_by: string | null
   created_at: string
+  updated_at: string
+  // Google Drive integration fields (null when not using Drive)
+  external_provider: 'google_drive' | null
+  external_file_id: string | null
+  web_view_link: string | null
+  drive_parent_id: string | null
 }
+
+/** Item returned by the file explorer — can be a file or a Drive folder */
+export type DriveItem =
+  | (FileItem & { item_type: 'file' })
+  | {
+      item_type: 'folder'
+      id: string
+      name: string
+      drive_folder_id: string
+      parent_folder_id: string | null
+      created_at: string | null
+    }
 
 export type KanbanColumn = {
   id: string

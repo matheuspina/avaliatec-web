@@ -42,7 +42,7 @@ function EmailContent() {
   // Initial loading state
   if (loading && folders.length === 0) {
     return (
-      <AppMainBleed fillHeight className="flex-row overflow-hidden">
+      <AppMainBleed fillHeight padContent={false} className="flex-row overflow-hidden">
         {/* Folder Sidebar Skeleton */}
         <div className="w-full md:w-64 border-r bg-muted/10 p-4">
           <div className="mb-4 h-6 w-24 animate-pulse rounded bg-muted" />
@@ -79,7 +79,7 @@ function EmailContent() {
   // Error state
   if (error && folders.length === 0) {
     return (
-      <AppMainBleed className="items-center justify-center">
+      <AppMainBleed padContent={false} className="items-center justify-center">
         <div className="flex max-w-md flex-col items-center gap-4 text-center">
           <div className="rounded-full bg-destructive/10 p-3">
             <AlertCircle className="h-8 w-8 text-destructive" />
@@ -105,7 +105,7 @@ function EmailContent() {
   // Empty state - no folders
   if (!loading && folders.length === 0) {
     return (
-      <AppMainBleed className="items-center justify-center">
+      <AppMainBleed padContent={false} className="items-center justify-center">
         <div className="flex max-w-md flex-col items-center gap-4 text-center">
           <Mail className="h-12 w-12 text-muted-foreground opacity-50" />
           <div>
@@ -126,7 +126,7 @@ function EmailContent() {
   // Mobile: Show full-screen email viewer when email is selected
   if (showMobileViewer && selectedEmail) {
     return (
-      <AppMainBleed fillHeight className="flex-col md:hidden">
+      <AppMainBleed fillHeight padContent={false} className="flex-col md:hidden">
         {/* Mobile Header */}
         <div className="flex items-center gap-2 border-b bg-background p-3">
           <Button
@@ -150,7 +150,7 @@ function EmailContent() {
 
   // Normal state with content (Desktop + Mobile list view)
   return (
-    <AppMainBleed fillHeight className="flex-row overflow-hidden">
+    <AppMainBleed fillHeight padContent={false} className="flex-row overflow-hidden">
       {/* Desktop: Left Sidebar - Folders */}
       <div className="hidden md:block">
         <FolderSidebar />
