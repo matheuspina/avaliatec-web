@@ -20,44 +20,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type TaskFilters, type Profile, listProfiles } from "@/lib/data/tasks"
-import { type KanbanColumn, listKanbanColumns } from "@/lib/data/kanban-columns"
-import { usePermissions } from "@/contexts/permission-context"
+import { type TaskFilters, type Profile } from "@/lib/data/tasks"
+import { type KanbanColumn } from "@/lib/data/kanban-columns"
 
 interface TaskFilterDialogProps {
   filters: TaskFilters
   onFiltersChange: (filters: TaskFilters) => void
+  profiles: Profile[]
+  columns: KanbanColumn[]
 }
 
-export function TaskFilterDialog({ filters, onFiltersChange }: TaskFilterDialogProps) {
-  const { hasPermission } = usePermissions()
+export function TaskFilterDialog({
+  filters,
+  onFiltersChange,
+  profiles,
+  columns,
+}: TaskFilterDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [localFilters, setLocalFilters] = useState<TaskFilters>(filters)
-  const [profiles, setProfiles] = useState<Profile[]>([])
-  const [columns, setColumns] = useState<KanbanColumn[]>([])
 
   // Note: Content filtering is enforced by RLS policies at the database level.
   // Users will only see tasks they have access to based on their permissions.
   // This filter dialog allows further refinement of the already-filtered results.
-
-  useEffect(() => {
-    async function loadOptions() {
-      try {
-        const [profilesData, columnsData] = await Promise.all([
-          listProfiles(),
-          listKanbanColumns(),
-        ])
-        setProfiles(profilesData)
-        setColumns(columnsData)
-      } catch (error) {
-        console.error("Erro ao carregar opções de filtro:", error)
-      }
-    }
-
-    if (isOpen) {
-      loadOptions()
-    }
-  }, [isOpen])
 
   useEffect(() => {
     setLocalFilters(filters)

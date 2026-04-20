@@ -95,7 +95,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const deadlineDisplay = task.deadline ? new Date(task.deadline).toLocaleDateString("pt-BR") : "Sem prazo"
+  const deadlineDisplay = task.deadline ? new Date(task.deadline).toLocaleDateString("pt-BR") : null
 
   return (
     <div
@@ -106,7 +106,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
         className="hover:border-primary transition-colors cursor-pointer"
         onClick={onClick}
       >
-        <CardHeader className="p-4">
+        <CardHeader className="p-4 pb-3">
           <div className="flex items-start gap-2">
             <div
               {...attributes}
@@ -117,28 +117,13 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
-              {task.description && (
-                <CardDescription className="text-xs mt-1">
-                  {task.description}
-                </CardDescription>
-              )}
+              <CardTitle className="text-sm font-medium leading-snug">{task.title}</CardTitle>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 pt-0 pl-11">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {deadlineDisplay}
-            </div>
-            <div className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {task.assignee || "Sem responsável"}
-            </div>
-          </div>
+        <CardContent className="p-4 pt-0 space-y-2">
           {task.project && (
-            <div className="mt-2">
+            <div className="pl-7">
               <ProjectTag
                 projectName={task.project.name}
                 projectCode={task.project.code}
@@ -147,6 +132,20 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
               />
             </div>
           )}
+          <div className="pl-7 space-y-1.5">
+            {deadlineDisplay && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3 flex-shrink-0" />
+                <span>{deadlineDisplay}</span>
+              </div>
+            )}
+            {task.assignee && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <User className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{task.assignee}</span>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -683,8 +682,8 @@ export default function TarefasPage() {
   const activeTask = tasks.find((task) => task.id === activeId)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Tarefas</h1>
           <p className="text-muted-foreground">
@@ -700,7 +699,7 @@ export default function TarefasPage() {
       </div>
 
       {/* Filtro de Projeto */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-6">
         <Select
           value={selectedProjectId || "all"}
           onValueChange={(v) => {
@@ -775,9 +774,9 @@ export default function TarefasPage() {
         onDragEnd={handleDragEnd}
         collisionDetection={rectIntersection}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto flex-1 pb-4">
           {loadingColumns ? (
-            <div className="flex items-center justify-center w-full h-[400px]">
+            <div className="flex items-center justify-center w-full h-full">
               <p className="text-muted-foreground">Carregando colunas...</p>
             </div>
           ) : (
@@ -786,7 +785,7 @@ export default function TarefasPage() {
               return (
               <div
                 key={column.id}
-                className="flex-shrink-0 w-[300px]"
+                className="flex-shrink-0 w-[300px] h-full"
                 ref={(node) => {
                   if (node) {
                     columnRefs.current.set(column.id, node)
@@ -795,8 +794,8 @@ export default function TarefasPage() {
                   }
                 }}
               >
-                <Card className="flex-1">
-                  <CardHeader className="p-4">
+                <Card className="flex flex-col h-full">
+                  <CardHeader className="p-4 flex-shrink-0">
                     <div className="flex items-center justify-between gap-2">
                       {editingColumnId === column.id ? (
                         <div className="flex items-center gap-2 flex-1">
@@ -858,7 +857,7 @@ export default function TarefasPage() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-0">
+                  <CardContent className="p-4 pt-0 flex-1 overflow-y-auto">
                     <SortableContext
                       items={columnTasks.map((task) => task.id)}
                       strategy={verticalListSortingStrategy}

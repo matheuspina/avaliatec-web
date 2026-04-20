@@ -11,6 +11,7 @@ export type KanbanTask = {
   watchers: string[] // Array of user IDs
   labels?: string[]
   createdAt: string // ISO date
+  updatedAt: string // ISO date
   project?: {
     id: string
     name: string
@@ -34,12 +35,18 @@ export type TaskFilters = {
   searchText?: string
 }
 
+export type ProjectChecklistSummary = {
+  totalItems: number
+  completedItems: number
+  completionPercentage: number
+}
+
 export async function listTasks(params?: TaskFilters): Promise<KanbanTask[]> {
   const supabase = createClient()
   let query = supabase
     .from("tasks")
     .select(
-      `id, title, description, status, deadline, labels, assigned_to, watchers, project_id, created_at,
+      `id, title, description, status, deadline, labels, assigned_to, watchers, project_id, created_at, updated_at,
        profiles:profiles!tasks_assigned_to_fkey(full_name),
        projects:project_id(id, name, code, color)`
     )
@@ -92,6 +99,7 @@ export async function listTasks(params?: TaskFilters): Promise<KanbanTask[]> {
       watchers: t.watchers ?? [],
       labels: t.labels ?? [],
       createdAt: t.created_at ?? "",
+      updatedAt: t.updated_at ?? "",
       project: t.projects
         ? {
             id: t.projects.id,
@@ -110,6 +118,29 @@ export async function listTasks(params?: TaskFilters): Promise<KanbanTask[]> {
         : null,
     }
   })
+}
+
+export async function getProjectChecklistSummary(projectId: string): Promise<ProjectChecklistSummary> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from("task_checklist")
+    .select("id, completed, tasks!inner(project_id)")
+    .eq("tasks.project_id", projectId)
+
+  if (error) throw error
+
+  const rows = data ?? []
+  const totalItems = rows.length
+  const completedItems = rows.filter((item: any) => Boolean(item.completed)).length
+  const completionPercentage =
+    totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+
+  return {
+    totalItems,
+    completedItems,
+    completionPercentage,
+  }
 }
 
 export async function createTask(input: {

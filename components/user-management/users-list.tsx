@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,11 +33,7 @@ export function UsersList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [updating, setUpdating] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const supabase = createClient()
@@ -74,7 +70,11 @@ export function UsersList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   async function handleGroupChange(userId: string, newGroupId: string) {
     try {

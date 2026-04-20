@@ -1,5 +1,8 @@
 import { createClient } from "../supabase/client";
 import type { Project } from "../types";
+import type { KanbanColumn } from "./kanban-columns";
+import type { ProjectStatus } from "./project-statuses";
+import type { KanbanTask, Profile, ProjectChecklistSummary } from "./tasks";
 
 export type ProjectStatusUI = string;
 
@@ -264,6 +267,17 @@ export type ProjectMember = {
   avatarUrl: string | null;
 };
 
+export type ProjectSinglePageBundle = {
+  project: ProjectDetails;
+  files: ProjectFile[];
+  members: ProjectMember[];
+  tasks: KanbanTask[];
+  columns: KanbanColumn[];
+  statuses: ProjectStatus[];
+  profiles: Profile[];
+  checklistSummary: ProjectChecklistSummary;
+};
+
 export async function getProjectDetails(projectId: string): Promise<ProjectDetails> {
   const supabase = createClient();
 
@@ -306,11 +320,11 @@ export async function getProjectDetails(projectId: string): Promise<ProjectDetai
     status: statusName,
     statusId,
     statusColor,
-    priority: null,
-    startDate: null,
+    priority: (project.priority as string | null) ?? null,
+    startDate: (project.start_date as string | null) ?? null,
     endDate: (project.end_date as string | null) ?? null,
-    budget: null,
-    progress: null,
+    budget: (project.budget as string | null) ?? null,
+    progress: (project.progress as number | null) ?? null,
     color: (project.color as string | null) ?? null,
     teamMembers: Array.isArray(teamMembersRaw) ? (teamMembersRaw as string[]) : [],
     client: clients
@@ -384,6 +398,205 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
   }));
 }
 
+export async function getProjectSinglePageBundle(projectId: string): Promise<ProjectSinglePageBundle> {
+  const supabase = createClient();
+  const { data: raw, error } = await supabase.rpc("get_project_single_page_bundle", {
+    p_project_id: projectId,
+  });
+
+  if (error) throw error;
+  if (raw == null || typeof raw !== "object") throw new Error("Projeto não encontrado");
+
+  const bundle = raw as Record<string, any>;
+  const projectRaw = (bundle.project ?? null) as Record<string, any> | null;
+
+  if (!projectRaw) throw new Error("Projeto não encontrado");
+
+  const stats = projectRaw.stats as Record<string, number> | null | undefined;
+  const totalTasks = stats?.total_tasks ?? 0;
+  const completedTasks = stats?.completed_tasks ?? 0;
+  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const totalFiles = stats?.total_files ?? 0;
+
+  const statusSlug = projectRaw.status as string | undefined;
+  const statusRef = projectRaw.status_ref as { id?: string; name?: string; color?: string } | null | undefined;
+  const statusName = statusRef?.name ?? mapDbStatusToUI(statusSlug);
+  const statusColor = statusRef?.color ?? getFallbackStatusColor(statusSlug);
+  const statusId =
+    (projectRaw.status_id as string | null | undefined) ?? statusRef?.id ?? null;
+
+  const clientRaw = projectRaw.clients as
+    | {
+        id: string;
+        name: string;
+        email: string | null;
+        phone: string | null;
+      }
+    | null
+    | undefined;
+
+  const projectManagerRaw = projectRaw.project_manager as
+    | {
+        id: string;
+        full_name: string;
+        avatar_url: string | null;
+      }
+    | null
+    | undefined;
+
+  const createdByRaw = projectRaw.created_by_user as
+    | { id: string; full_name: string }
+    | null
+    | undefined;
+
+  const project: ProjectDetails = {
+    id: projectRaw.id as string,
+    code: projectRaw.code as string,
+    name: projectRaw.name as string,
+    description: (projectRaw.description as string | null) ?? null,
+    status: statusName,
+    statusId,
+    statusColor,
+    priority: null,
+    startDate: null,
+    endDate: (projectRaw.end_date as string | null) ?? null,
+    budget: null,
+    progress: null,
+    color: (projectRaw.color as string | null) ?? null,
+    teamMembers: Array.isArray(projectRaw.team_members) ? (projectRaw.team_members as string[]) : [],
+    client: clientRaw
+      ? {
+          id: clientRaw.id,
+          name: clientRaw.name,
+          email: clientRaw.email,
+          phone: clientRaw.phone,
+        }
+      : null,
+    projectManager: projectManagerRaw
+      ? {
+          id: projectManagerRaw.id,
+          name: projectManagerRaw.full_name,
+          avatar_url: projectManagerRaw.avatar_url,
+        }
+      : null,
+    createdBy: createdByRaw
+      ? {
+          id: createdByRaw.id,
+          name: createdByRaw.full_name,
+        }
+      : null,
+    stats: {
+      totalTasks,
+      completedTasks,
+      completionPercentage,
+      totalFiles,
+    },
+    createdAt: projectRaw.created_at as string,
+    updatedAt: projectRaw.updated_at as string,
+  };
+
+  const columns = (Array.isArray(bundle.columns) ? bundle.columns : []).map((column: any) => ({
+    id: column.id,
+    name: column.name,
+    color: column.color ?? "#6B7280",
+    position: column.position ?? 0,
+    project_id: column.project_id ?? null,
+    statusKey: column.status_key ?? "",
+  })) as KanbanColumn[];
+
+  const columnsByStatus = new Map(columns.map((column) => [column.statusKey, column]));
+
+  const tasks = (Array.isArray(bundle.tasks) ? bundle.tasks : []).map((task: any) => {
+    const matchedColumn = columnsByStatus.get(task.status ?? "");
+    return {
+      id: task.id,
+      title: task.title ?? "",
+      description: task.description ?? null,
+      status: task.status ?? "",
+      deadline: task.deadline ?? null,
+      assignee: task.assignee_name ?? "",
+      assigneeId: task.assigned_to ?? null,
+      watchers: Array.isArray(task.watchers) ? task.watchers : [],
+      labels: Array.isArray(task.labels) ? task.labels : [],
+      createdAt: task.created_at ?? "",
+      updatedAt: task.updated_at ?? "",
+      project: {
+        id: project.id,
+        name: project.name,
+        code: project.code,
+        color: project.color,
+      },
+      column: matchedColumn
+        ? {
+            id: matchedColumn.id,
+            name: matchedColumn.name,
+            color: matchedColumn.color,
+            statusKey: matchedColumn.statusKey,
+          }
+        : null,
+    };
+  }) as KanbanTask[];
+
+  const files = (Array.isArray(bundle.files) ? bundle.files : []).map((file: any) => ({
+    id: file.id,
+    name: file.name,
+    mimeType: file.mime_type ?? null,
+    fileSize: file.file_size ?? null,
+    filePath: file.file_path ?? "",
+    uploadedBy: file.uploader
+      ? {
+          id: file.uploader.id,
+          name: file.uploader.full_name,
+        }
+      : null,
+    createdAt: file.created_at,
+  })) as ProjectFile[];
+
+  const members = (Array.isArray(bundle.members) ? bundle.members : []).map((member: any) => ({
+    id: member.id,
+    name: member.name,
+    email: member.email ?? "",
+    role: member.role ?? null,
+    avatarUrl: member.avatar_url ?? null,
+  })) as ProjectMember[];
+
+  const statuses = (Array.isArray(bundle.statuses) ? bundle.statuses : []).map((status: any) => ({
+    id: status.id,
+    name: status.name,
+    color: status.color,
+    description: status.description ?? null,
+    position: status.position ?? 0,
+    isActive: status.is_active ?? true,
+    createdAt: status.created_at,
+    updatedAt: status.updated_at,
+  })) as ProjectStatus[];
+
+  const profiles = (Array.isArray(bundle.profiles) ? bundle.profiles : []).map((profile: any) => ({
+    id: profile.id,
+    fullName: profile.full_name ?? "",
+    email: profile.email ?? "",
+    avatarUrl: profile.avatar_url ?? null,
+  })) as Profile[];
+
+  const checklistRaw = (bundle.checklist_summary ?? {}) as Record<string, any>;
+  const checklistSummary: ProjectChecklistSummary = {
+    totalItems: checklistRaw.total_items ?? 0,
+    completedItems: checklistRaw.completed_items ?? 0,
+    completionPercentage: checklistRaw.completion_percentage ?? 0,
+  };
+
+  return {
+    project,
+    files,
+    members,
+    tasks,
+    columns,
+    statuses,
+    profiles,
+    checklistSummary,
+  };
+}
+
 export async function updateProjectColor(projectId: string, color: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("projects").update({ color }).eq("id", projectId);
@@ -411,34 +624,40 @@ export async function updateProjectStatus(projectId: string, statusId: string, s
   if (error) throw error;
 }
 
-export async function addProjectMember(projectId: string, userId: string, role?: string): Promise<void> {
+export async function updateProjectBudget(projectId: string, budget: string | null): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("project_members").insert({
-    project_id: projectId,
-    user_id: userId,
-    role: role || null,
-  });
+  const { error } = await supabase.from("projects").update({ budget }).eq("id", projectId);
   if (error) throw error;
+}
+
+export async function updateProjectPriority(projectId: string, priority: string | null): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("projects").update({ priority }).eq("id", projectId);
+  if (error) throw error;
+}
+
+export async function updateProjectStartDate(projectId: string, startDate: string | null): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("projects").update({ start_date: startDate }).eq("id", projectId);
+  if (error) throw error;
+}
+
+/** Membros ficam em `projects.team_members` (UUID[]); não existe tabela `project_members`. */
+export async function addProjectMember(projectId: string, userId: string, _role?: string): Promise<void> {
+  await addTeamMember(projectId, userId);
 }
 
 export async function removeProjectMember(projectId: string, userId: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("project_members")
-    .delete()
-    .eq("project_id", projectId)
-    .eq("user_id", userId);
-  if (error) throw error;
+  await removeTeamMember(projectId, userId);
 }
 
-export async function updateProjectMemberRole(projectId: string, userId: string, role: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("project_members")
-    .update({ role })
-    .eq("project_id", projectId)
-    .eq("user_id", userId);
-  if (error) throw error;
+/** Reservado: não há papel por projeto na base (apenas `profiles.role` global). */
+export async function updateProjectMemberRole(
+  _projectId: string,
+  _userId: string,
+  _role: string
+): Promise<void> {
+  return;
 }
 
 export async function updateProjectTeamMembers(projectId: string, teamMembers: string[]): Promise<void> {

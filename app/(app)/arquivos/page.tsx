@@ -38,7 +38,6 @@ import {
   MoreVertical,
   Loader2,
   AlertCircle,
-  HardDrive,
   ArrowLeft,
   RefreshCw,
 } from "lucide-react"
@@ -343,18 +342,14 @@ export default function ArquivosPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <AppMainBleed className="flex flex-col gap-0">
-      {/* Header */}
-      <div className="flex flex-col gap-4 border-b px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+    <AppMainBleed className="flex min-h-0 flex-1 flex-col gap-6">
+      <div className="flex shrink-0 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-              <HardDrive className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold leading-none">Arquivos</h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">Google Drive</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold">Arquivos</h1>
+            <p className="text-muted-foreground">
+              Arquivos e pastas do Google Drive
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -432,10 +427,9 @@ export default function ArquivosPage() {
         </div>
       </div>
 
-      {/* Drop zone + Content */}
       <div
         className={cn(
-          "relative flex min-h-0 flex-1 flex-col transition-colors",
+          "relative flex min-h-0 min-w-0 flex-1 flex-col transition-colors",
           isDragOver && "bg-primary/5"
         )}
         onDragOver={(e) => {
@@ -483,7 +477,7 @@ export default function ArquivosPage() {
         )}
 
         {!loading && !error && (
-          <div className="flex flex-1 flex-col px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex min-h-0 flex-1 flex-col">
             {/* Back button when inside a sub-folder */}
             {breadcrumbs.length > 0 && (
               <button

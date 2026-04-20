@@ -14,6 +14,12 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
   Plus,
   Calendar,
   User,
@@ -120,12 +126,15 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
   const [showLabelsSection, setShowLabelsSection] = useState(false)
   const [showDateSection, setShowDateSection] = useState(false)
   const [showChecklistSection, setShowChecklistSection] = useState(false)
-  const [showProjectSection, setShowProjectSection] = useState(false)
-  const [showMembersSection, setShowMembersSection] = useState(false)
   const [projects, setProjects] = useState<ProjectListItem[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const labelsInputRef = useRef<HTMLInputElement | null>(null)
   const checklistInputRef = useRef<HTMLInputElement | null>(null)
+  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false)
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false)
+  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false)
+  const [projectPopoverOpen, setProjectPopoverOpen] = useState(false)
+  const [membersPopoverOpen, setMembersPopoverOpen] = useState(false)
 
   // Sincronizar editedTask quando task mudar
   useEffect(() => {
@@ -133,7 +142,6 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
       setEditedTask(task)
       setShowLabelsSection(!!(task.labels && task.labels.length > 0))
       setShowDateSection(!!task.deadline || !!task.assignee)
-      setShowProjectSection(!!task.project)
     }
   }, [task, open])
 
@@ -482,29 +490,159 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
           {/* Botões de ação */}
           {!isReadOnly && (
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowLabelsSection(true)
-                  requestAnimationFrame(() => labelsInputRef.current?.focus())
-                }}
-              >
-                <Tag className="mr-2 h-4 w-4" />
-                Etiquetas
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDateSection(true)}
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                Datas
-              </Button>
+              <Dialog open={labelsDialogOpen} onOpenChange={setLabelsDialogOpen}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLabelsDialogOpen(true)}
+                >
+                  <Tag className="mr-2 h-4 w-4" />
+                  Etiquetas
+                </Button>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Gerenciar Etiquetas</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {editedTask.labels?.map((label) => (
+                        <Badge key={label} variant="secondary" className="gap-1">
+                          {label}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => handleRemoveLabel(label)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newLabel}
+                        onChange={(e) => setNewLabel(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleAddLabel()
+                          }
+                        }}
+                        placeholder="Nova etiqueta"
+                        className="flex-1"
+                        ref={labelsInputRef}
+                      />
+                      <Button onClick={handleAddLabel}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Datas
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={editedTask.deadline ? new Date(editedTask.deadline) : undefined}
+                    onSelect={async (date) => {
+                      if (!editedTask.id) return
+                      const dateString = date ? date.toISOString().split('T')[0] : null
+                      
+                      try {
+                        await updateTask(editedTask.id, { deadline: dateString })
+                        const updatedTask = {
+                          ...editedTask,
+                          deadline: dateString
+                        }
+                        setEditedTask(updatedTask)
+                        if (onUpdate) {
+                          onUpdate(updatedTask)
+                        }
+                        toast({
+                          title: "Data atualizada",
+                          description: date ? `Data de vencimento definida para ${date.toLocaleDateString("pt-BR")}` : "Data de vencimento removida",
+                        })
+                        setDatePopoverOpen(false)
+                      } catch (err) {
+                        console.error("Erro ao atualizar data:", err)
+                        toast({
+                          title: "Erro ao atualizar data",
+                          description: "Não foi possível atualizar a data de vencimento",
+                          variant: "destructive",
+                        })
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <User className="mr-2 h-4 w-4" />
+                    Responsável
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Responsável pela Tarefa</label>
+                    <Select
+                      value={editedTask.assigneeId || "unassigned"}
+                      onValueChange={async (value) => {
+                        if (!editedTask.id) return
+                        const selectedProfile = profiles.find((p) => p.id === value)
+
+                        try {
+                          await updateTask(editedTask.id, { assigned_to: value === "unassigned" ? null : value })
+                          const updatedTask = {
+                            ...editedTask,
+                            assigneeId: value === "unassigned" ? null : value,
+                            assignee: selectedProfile?.fullName || ""
+                          }
+                          setEditedTask(updatedTask)
+                          if (onUpdate) {
+                            onUpdate(updatedTask)
+                          }
+                          toast({
+                            title: "Responsável atualizado",
+                            description: `Tarefa atribuída a ${selectedProfile?.fullName || "ninguém"}`,
+                          })
+                          setAssigneePopoverOpen(false)
+                        } catch (err) {
+                          console.error("Erro ao atribuir responsável:", err)
+                          toast({
+                            title: "Erro ao atribuir responsável",
+                            description: "Não foi possível atribuir o responsável",
+                            variant: "destructive",
+                          })
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar responsável">
+                          {editedTask.assignee || "Sem responsável"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">
+                          <span className="text-muted-foreground">Sem responsável</span>
+                        </SelectItem>
+                        {profiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -516,22 +654,179 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
                 <CheckSquare className="mr-2 h-4 w-4" />
                 Checklist
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowProjectSection(true)}
-              >
-                <FolderKanban className="mr-2 h-4 w-4" />
-                Projeto
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMembersSection(true)}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                Membros
-              </Button>
+
+              <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <FolderKanban className="mr-2 h-4 w-4" />
+                    Projeto
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Vincular a um Projeto</label>
+                      {editedTask.project ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-accent/50">
+                            <ProjectTag
+                              projectName={editedTask.project.name}
+                              projectCode={editedTask.project.code}
+                              projectColor={editedTask.project.color}
+                              size="sm"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={async () => {
+                              if (!editedTask.id) return
+                              try {
+                                await updateTask(editedTask.id, { project_id: null })
+                                const updatedTask = { ...editedTask, project: null }
+                                setEditedTask(updatedTask)
+                                if (onUpdate) {
+                                  onUpdate(updatedTask)
+                                }
+                                toast({
+                                  title: "Projeto removido",
+                                  description: "Tarefa desvinculada do projeto",
+                                })
+                                setProjectPopoverOpen(false)
+                              } catch (err) {
+                                console.error("Erro ao remover projeto:", err)
+                                toast({
+                                  title: "Erro ao remover projeto",
+                                  description: "Não foi possível desvincular a tarefa",
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Remover Projeto
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select
+                          onValueChange={async (value) => {
+                            if (!editedTask.id || !value) return
+                            const selectedProject = projects.find((p) => p.id === value)
+                            if (!selectedProject) return
+
+                            try {
+                              await updateTask(editedTask.id, { project_id: value })
+                              const newProject = {
+                                id: selectedProject.id,
+                                name: selectedProject.name,
+                                code: selectedProject.code,
+                                color: selectedProject.color,
+                              }
+                              const updatedTask = { ...editedTask, project: newProject }
+                              setEditedTask(updatedTask)
+                              if (onUpdate) {
+                                onUpdate(updatedTask)
+                              }
+                              toast({
+                                title: "Projeto vinculado",
+                                description: `Tarefa vinculada ao projeto ${selectedProject.name}`,
+                              })
+                              setProjectPopoverOpen(false)
+                            } catch (err) {
+                              console.error("Erro ao vincular projeto:", err)
+                              toast({
+                                title: "Erro ao vincular projeto",
+                                description: "Não foi possível vincular a tarefa",
+                                variant: "destructive",
+                              })
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar projeto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {projects.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="h-2 w-2 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: project.color || "#6B7280" }}
+                                  />
+                                  <span className="truncate">{project.code} - {project.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Popover open={membersPopoverOpen} onOpenChange={setMembersPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Users className="mr-2 h-4 w-4" />
+                    Membros
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Membros da Tarefa</label>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {editedTask.members && editedTask.members.map((member) => (
+                          <Badge key={member} variant="outline" className="gap-1">
+                            {member}
+                            <X
+                              className="h-3 w-3 cursor-pointer"
+                              onClick={() => {
+                                const nextMembers = editedTask.members?.filter((m) => m !== member) ?? []
+                                setEditedTask({ ...editedTask, members: nextMembers })
+                                toast({
+                                  title: "Membro removido",
+                                  description: `${member} foi removido da tarefa`,
+                                })
+                              }}
+                            />
+                          </Badge>
+                        ))}
+                      </div>
+                      <Select
+                        onValueChange={async (value) => {
+                          if (!editedTask.id || !value) return
+                          const selectedProfile = profiles.find((p) => p.id === value)
+                          if (!selectedProfile) return
+
+                          const newMembers = [...(editedTask.members || []), selectedProfile.fullName]
+                          setEditedTask({ ...editedTask, members: newMembers })
+
+                          toast({
+                            title: "Membro adicionado",
+                            description: `${selectedProfile.fullName} foi adicionado à tarefa`,
+                          })
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Adicionar membro" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {profiles
+                            .filter((p) => !editedTask.members?.includes(p.fullName))
+                            .map((profile) => (
+                              <SelectItem key={profile.id} value={profile.id}>
+                                {profile.fullName}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 
@@ -553,7 +848,7 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
             />
           </div>
 
-          {(showLabelsSection || (editedTask.labels && editedTask.labels.length > 0)) && (
+          {(editedTask.labels && editedTask.labels.length > 0) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
@@ -561,272 +856,70 @@ export function TaskModal({ task, isOpen, open, onClose, onOpenChange, onUpdate,
             </div>
             <div className="flex flex-wrap gap-2">
               {editedTask.labels?.map((label) => (
-                <Badge key={label} variant="secondary" className="gap-1">
+                <Badge key={label} variant="secondary">
                   {label}
-                  {!isReadOnly && (
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => handleRemoveLabel(label)}
-                    />
-                  )}
                 </Badge>
               ))}
-              {!isReadOnly && (
-                <div className="flex gap-2">
-                  <Input
-                    value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddLabel()
-                    }}
-                    placeholder="Nova etiqueta"
-                    className="h-7 w-32 text-sm"
-                    ref={labelsInputRef}
-                  />
-                  <Button size="sm" variant="ghost" onClick={handleAddLabel}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
           )}
 
-          {(showDateSection || !!editedTask.deadline || !!editedTask.assignee) && (
+          {(!!editedTask.deadline || !!editedTask.assignee) && (
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
-                <h3 className="font-semibold">Data</h3>
+            {editedTask.deadline && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
+                  <h3 className="font-semibold">Data</h3>
+                </div>
+                <p className="text-sm">
+                  {new Date(editedTask.deadline).toLocaleDateString("pt-BR")}
+                </p>
               </div>
-              <Input
-                type="date"
-                value={editedTask.deadline || ""}
-                onChange={(e) =>
-                  setEditedTask({ ...editedTask, deadline: e.target.value })
-                }
-                onBlur={handleUpdate}
-                disabled={isReadOnly}
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
-                <h3 className="font-semibold">Responsável</h3>
+            )}
+            {editedTask.assignee && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
+                  <h3 className="font-semibold">Responsável</h3>
+                </div>
+                <p className="text-sm">{editedTask.assignee}</p>
               </div>
-              <Select
-                value={editedTask.assigneeId || "unassigned"}
-                onValueChange={async (value) => {
-                  if (!editedTask.id) return
-                  const selectedProfile = profiles.find((p) => p.id === value)
-
-                  try {
-                    await updateTask(editedTask.id, { assigned_to: value === "unassigned" ? null : value })
-                    const updatedTask = {
-                      ...editedTask,
-                      assigneeId: value === "unassigned" ? null : value,
-                      assignee: selectedProfile?.fullName || ""
-                    }
-                    setEditedTask(updatedTask)
-                    if (onUpdate) {
-                      onUpdate(updatedTask)
-                    }
-                    toast({
-                      title: "Responsável atualizado",
-                      description: `Tarefa atribuída a ${selectedProfile?.fullName || "ninguém"}`,
-                    })
-                  } catch (err) {
-                    console.error("Erro ao atribuir responsável:", err)
-                    toast({
-                      title: "Erro ao atribuir responsável",
-                      description: "Não foi possível atribuir o responsável",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                disabled={isReadOnly}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar responsável">
-                    {editedTask.assignee || "Sem responsável"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">
-                    <span className="text-muted-foreground">Sem responsável</span>
-                  </SelectItem>
-                  {profiles.map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            )}
           </div>
           )}
 
           {/* Projeto */}
-          {(showProjectSection || !!editedTask.project) && (
+          {!!editedTask.project && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <FolderKanban className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
               <h3 className="font-semibold">Projeto</h3>
             </div>
-            {editedTask.project ? (
-              <div className="flex items-center gap-2">
-                <ProjectTag
-                  projectName={editedTask.project.name}
-                  projectCode={editedTask.project.code}
-                  projectColor={editedTask.project.color}
-                  size="sm"
-                />
-                {!isReadOnly && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      if (!editedTask.id) return
-                      try {
-                        await updateTask(editedTask.id, { project_id: null })
-                        setEditedTask({ ...editedTask, project: null })
-                        setShowProjectSection(false)
-                        if (onUpdate) {
-                          onUpdate({ ...editedTask, project: null })
-                        }
-                        toast({
-                          title: "Projeto removido",
-                          description: "Tarefa desvinculada do projeto",
-                        })
-                      } catch (err) {
-                        console.error("Erro ao remover projeto:", err)
-                        toast({
-                          title: "Erro ao remover projeto",
-                          description: "Não foi possível desvincular a tarefa",
-                          variant: "destructive",
-                        })
-                      }
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <Select
-                onValueChange={async (value) => {
-                  if (!editedTask.id || !value) return
-                  const selectedProject: ProjectListItem | undefined = projects.find((p) => p.id === value)
-                  if (!selectedProject) return
-
-                  try {
-                    await updateTask(editedTask.id, { project_id: value })
-                    const newProject = {
-                      id: selectedProject.id,
-                      name: selectedProject.name,
-                      code: selectedProject.code,
-                      color: selectedProject.color,
-                    }
-                    setEditedTask({ ...editedTask, project: newProject })
-                    if (onUpdate) {
-                      onUpdate({ ...editedTask, project: newProject })
-                    }
-                    toast({
-                      title: "Projeto vinculado",
-                      description: `Tarefa vinculada ao projeto ${selectedProject.name}`,
-                    })
-                  } catch (err) {
-                    console.error("Erro ao vincular projeto:", err)
-                    toast({
-                      title: "Erro ao vincular projeto",
-                      description: "Não foi possível vincular a tarefa",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                disabled={isReadOnly}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-2 w-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: project.color || "#6B7280" }}
-                        />
-                        <span className="truncate">{project.code} - {project.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="flex items-center gap-2">
+              <ProjectTag
+                projectName={editedTask.project.name}
+                projectCode={editedTask.project.code}
+                projectColor={editedTask.project.color}
+                size="sm"
+              />
+            </div>
           </div>
           )}
 
           {/* Membros */}
-          {(showMembersSection || (editedTask.members && editedTask.members.length > 0)) && (
+          {(editedTask.members && editedTask.members.length > 0) && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-foreground/80 dark:text-foreground/80" />
                 <h3 className="font-semibold">Membros</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                {editedTask.members && editedTask.members.map((member) => (
-                  <Badge key={member} variant="outline" className="gap-1">
+                {editedTask.members.map((member) => (
+                  <Badge key={member} variant="outline">
                     {member}
-                    {!isReadOnly && (
-                      <X
-                        className="h-3 w-3 cursor-pointer"
-                        onClick={() => {
-                          const nextMembers = editedTask.members?.filter((m) => m !== member) ?? []
-                          if (nextMembers.length === 0) {
-                            setShowMembersSection(false)
-                          }
-                          setEditedTask({ ...editedTask, members: nextMembers })
-                          toast({
-                            title: "Membro removido",
-                            description: `${member} foi removido da tarefa`,
-                          })
-                        }}
-                      />
-                    )}
                   </Badge>
                 ))}
-                {!isReadOnly && (
-                  <Select
-                    onValueChange={async (value) => {
-                      if (!editedTask.id || !value) return
-                      const selectedProfile = profiles.find((p) => p.id === value)
-                      if (!selectedProfile) return
-
-                      // Adicionar membro à lista (aqui você pode implementar a chamada ao backend)
-                      const newMembers = [...(editedTask.members || []), selectedProfile.fullName]
-                      setEditedTask({ ...editedTask, members: newMembers })
-
-                      toast({
-                        title: "Membro adicionado",
-                        description: `${selectedProfile.fullName} foi adicionado à tarefa`,
-                      })
-                    }}
-                  >
-                    <SelectTrigger className="w-[180px] h-8">
-                      <SelectValue placeholder="Adicionar membro" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles
-                        .filter((p) => !editedTask.members?.includes(p.fullName))
-                        .map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.fullName}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                )}
               </div>
             </div>
           )}

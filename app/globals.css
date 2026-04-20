@@ -5,30 +5,46 @@
 @import "react-day-picker/style.css";
 
 @layer base {
-  /* Light — neutros do DESIGN.md §2 */
+  /* Light — warm neutral, professional tool aesthetic */
   :root {
-    --background: 210 17% 97%;
-    --foreground: 220 15% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 11%;
-    --primary: 156 44% 55%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 220 15% 18%;
-    --muted: 220 14% 94%;
-    --muted-foreground: 218 12% 40%;
-    --accent: 220 14% 92%;
-    --accent-foreground: 220 15% 11%;
-    --destructive: 0 72% 48%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 218 18% 82%;
-    --input: 218 18% 82%;
-    --ring: 156 44% 55%;
+    /* Superfícies — 3 níveis distintos, fundo creme-acinzentado */
+    --background: 220 16% 93%;        /* #E8EAF0 — fundo geral, não branco puro */
+    --foreground: 222 25% 12%;        /* #161B27 — texto principal, quase preto azulado */
+
+    --card: 220 20% 97%;              /* #F4F5F9 — cards levemente mais claros que o fundo */
+    --card-foreground: 222 25% 12%;
+
+    --popover: 0 0% 100%;             /* branco puro só em popovers/dropdowns flutuantes */
+    --popover-foreground: 222 25% 12%;
+
+    /* Verde da marca — tom ligeiramente mais escuro para contraste WCAG AA sobre fundo claro */
+    --primary: 152 48% 38%;           /* #2E9E5B — verde escurecido, legível sobre claro */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 16% 88%;         /* #D8DCE8 — superfície secundária */
+    --secondary-foreground: 222 20% 22%;
+
+    --muted: 220 14% 89%;             /* #D9DCE7 */
+    --muted-foreground: 220 12% 42%;  /* #5E6578 — texto de suporte, contraste 4.6:1 */
+
+    --accent: 220 16% 86%;            /* #D2D6E4 — hover states */
+    --accent-foreground: 222 25% 12%;
+
+    --destructive: 0 72% 44%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 16% 80%;            /* #C2C7D6 — bordas visíveis mas não agressivas */
+    --input: 220 16% 80%;
+    --ring: 152 48% 38%;
+
     --radius: 0.5rem;
-    --sidebar-background: 220 14% 96%;
-    --sidebar-border: 218 18% 88%;
+
+    --sidebar-background: 210 8% 5.5%;  /* idêntico ao dark mode */
+    --sidebar-border: 0 0% 100% / 0.05; /* idêntico ao dark mode */
+    --sidebar-foreground: 210 17% 97%;  /* texto claro no sidebar escuro */
+    --sidebar-muted-foreground: 218 7% 57%; /* texto secundário igual ao dark mode */
+    /* Anel/indicador do menu: mesmo tom nos dois temas (sidebar é sempre escuro) */
+    --sidebar-ring: 156 44% 55%;
   }
 
   /* Dark — Linear / DESIGN.md (marketing + painéis) */
@@ -54,6 +70,9 @@
     --ring: 156 44% 55%;
     --sidebar-background: 210 8% 5.5%;
     --sidebar-border: 0 0% 100% / 0.05;
+    --sidebar-foreground: 210 17% 97%;
+    --sidebar-muted-foreground: 218 7% 57%;
+    --sidebar-ring: 156 44% 55%;
   }
 }
 

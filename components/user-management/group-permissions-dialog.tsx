@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -41,13 +41,7 @@ export function GroupPermissionsDialog({
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (group && open) {
-      loadPermissions()
-    }
-  }, [group, open])
-
-  async function loadPermissions() {
+  const loadPermissions = useCallback(async () => {
     if (!group) return
 
     try {
@@ -87,7 +81,13 @@ export function GroupPermissionsDialog({
     } finally {
       setLoading(false)
     }
-  }
+  }, [group, toast])
+
+  useEffect(() => {
+    if (group && open) {
+      void loadPermissions()
+    }
+  }, [group, open, loadPermissions])
 
   function handlePermissionChange(
     section: SectionKey,

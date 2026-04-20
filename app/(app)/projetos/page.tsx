@@ -325,41 +325,42 @@ export default function ProjetosPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Lista de Projetos</CardTitle>
-              <CardDescription>
-                {loading ? "Carregando projetos..." : `Total de ${projects.length} projetos cadastrados`}
-              </CardDescription>
+        <CardContent className="p-6">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex max-w-sm flex-1 items-center gap-2">
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por código, nome ou cliente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="min-w-0"
+                />
+              </div>
+              <p className="shrink-0 text-sm text-muted-foreground">
+                {loading ? "Carregando…" : `${projects.length} ${projects.length === 1 ? "projeto" : "projetos"}`}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
+                type="button"
                 variant={view === "list" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setView("list")}
+                aria-label="Visualização em lista"
               >
                 <List className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant={view === "grid" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setView("grid")}
+                aria-label="Visualização em grade"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por código, nome ou cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
           </div>
 
           {view === "list" ? (

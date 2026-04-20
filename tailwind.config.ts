@@ -39,6 +39,9 @@ const config: Config = {
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           border: "hsl(var(--sidebar-border))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          "muted-foreground": "hsl(var(--sidebar-muted-foreground))",
+          ring: "hsl(var(--sidebar-ring))",
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",

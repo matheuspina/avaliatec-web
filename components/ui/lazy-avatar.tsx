@@ -56,13 +56,14 @@ export function LazyAvatar({
       }
     )
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current)
+    const node = imgRef.current
+    if (node) {
+      observer.observe(node)
     }
 
     return () => {
-      if (imgRef.current) {
-        observer.unobserve(imgRef.current)
+      if (node) {
+        observer.unobserve(node)
       }
     }
   }, [priority, src])

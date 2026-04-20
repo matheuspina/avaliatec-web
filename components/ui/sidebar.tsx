@@ -92,12 +92,12 @@ const SidebarFooter = React.forwardRef<
 SidebarFooter.displayName = "SidebarFooter"
 
 const sidebarMenuItemVariants = cva(
-  "relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-ring after:opacity-0 after:transition-opacity hover:after:opacity-100",
+  "relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-muted-foreground transition-colors hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-sidebar-ring after:opacity-0 after:transition-opacity hover:after:opacity-100",
   {
     variants: {
       active: {
-        true: "bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] text-foreground after:opacity-100",
-        false: "text-muted-foreground",
+        true: "bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] text-sidebar-foreground after:opacity-100",
+        false: "text-sidebar-muted-foreground",
       },
     },
     defaultVariants: {

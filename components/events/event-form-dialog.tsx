@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { X, Trash2 } from "lucide-react"
 import { listClients } from "@/lib/data/clients"
+import { listProfiles, type Profile } from "@/lib/data/tasks"
 import type { Client as ClientType } from "@/lib/types"
 import { usePermissions } from "@/contexts/permission-context"
 
@@ -58,15 +59,6 @@ interface EventFormDialogProps {
   mode?: "create" | "edit"
 }
 
-// Mock data for users only (profiles integration pode ser adicionada depois)
-const availableUsers: User[] = [
-  { id: "1", name: "João Silva" },
-  { id: "2", name: "Maria Santos" },
-  { id: "3", name: "Pedro Costa" },
-  { id: "4", name: "Ana Lima" },
-  { id: "5", name: "Carlos Souza" },
-]
-
 export function EventFormDialog({
   open,
   onOpenChange,
@@ -100,6 +92,10 @@ export function EventFormDialog({
   )
 
   const [formData, setFormData] = useState<EventFormData>(initialFormState)
+  const [clientOptions, setClientOptions] = useState<ClientType[]>([])
+  const [availableUsers, setAvailableUsers] = useState<Profile[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingClients, setLoadingClients] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -107,17 +103,36 @@ export function EventFormDialog({
     }
   }, [open, initialFormState])
 
-  const [clientOptions, setClientOptions] = useState<ClientType[]>([])
+  // Carregar clientes
   useEffect(() => {
     async function loadClients() {
       try {
+        setLoadingClients(true)
         const { data } = await listClients()
         setClientOptions(data)
       } catch (err) {
         console.error("Erro ao carregar clientes:", err)
+      } finally {
+        setLoadingClients(false)
       }
     }
     if (open) loadClients()
+  }, [open])
+
+  // Carregar usuários/profiles
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        setLoadingUsers(true)
+        const profiles = await listProfiles()
+        setAvailableUsers(profiles)
+      } catch (err) {
+        console.error("Erro ao carregar usuários:", err)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+    if (open) loadUsers()
   }, [open])
 
   const handleAddUser = (userId: string) => {
@@ -125,7 +140,7 @@ export function EventFormDialog({
     if (user && !formData.users.find((u) => u.id === userId)) {
       setFormData((prev) => ({
         ...prev,
-        users: [...prev.users, user],
+        users: [...prev.users, { id: user.id, name: user.fullName }],
       }))
     }
   }
@@ -165,19 +180,6 @@ export function EventFormDialog({
       onDelete()
       onOpenChange(false)
       setShowDeleteConfirm(false)
-    }
-  }
-
-  const getEventTypeLabel = (type: EventType) => {
-    switch (type) {
-      case "meeting":
-        return "Reunião"
-      case "deadline":
-        return "Prazo"
-      case "visit":
-        return "Visita"
-      default:
-        return type
     }
   }
 
@@ -230,10 +232,10 @@ export function EventFormDialog({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
             {/* Título */}
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label htmlFor="title">
                 Título {!isReadOnly && <span className="text-destructive">*</span>}
               </Label>
@@ -250,7 +252,7 @@ export function EventFormDialog({
             </div>
 
             {/* Descrição */}
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label htmlFor="description">
                 Descrição {!isReadOnly && <span className="text-destructive">*</span>}
               </Label>
@@ -271,7 +273,7 @@ export function EventFormDialog({
             </div>
 
             {/* Tipo de Evento */}
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label htmlFor="type">
                 Tipo de Evento {!isReadOnly && <span className="text-destructive">*</span>}
               </Label>
@@ -295,7 +297,7 @@ export function EventFormDialog({
 
             {/* Data e Hora */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
+              <div className="space-y-2">
                 <Label htmlFor="date">
                   Data {!isReadOnly && <span className="text-destructive">*</span>}
                 </Label>
@@ -310,7 +312,7 @@ export function EventFormDialog({
                   disabled={isReadOnly}
                 />
               </div>
-              <div className="grid gap-2">
+              <div className="space-y-2">
                 <Label htmlFor="time">
                   Horário {!isReadOnly && <span className="text-destructive">*</span>}
                 </Label>
@@ -328,7 +330,7 @@ export function EventFormDialog({
             </div>
 
             {/* Local */}
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label htmlFor="location">
                 Local {!isReadOnly && <span className="text-destructive">*</span>}
               </Label>
@@ -344,27 +346,66 @@ export function EventFormDialog({
               />
             </div>
 
-            {/* Usuários */}
-            <div className="grid gap-2">
-              <Label htmlFor="users">Adicionar Usuários</Label>
+            {/* Cliente (Opcional) */}
+            <div className="space-y-2">
+              <Label htmlFor="client">Cliente (Opcional)</Label>
               {!isReadOnly && (
-                <Select onValueChange={handleAddUser}>
+                <Select
+                  value={formData.client?.id}
+                  onValueChange={handleSetClient}
+                  disabled={loadingClients}
+                >
+                  <SelectTrigger id="client">
+                    <SelectValue placeholder={loadingClients ? "Carregando..." : "Selecione um cliente..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientOptions.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {formData.client && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="gap-1">
+                    {formData.client.name}
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveClient}
+                        className="ml-1 rounded-full hover:bg-secondary-foreground/20"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {/* Usuários */}
+            <div className="space-y-2">
+              <Label htmlFor="users">Participantes</Label>
+              {!isReadOnly && (
+                <Select onValueChange={handleAddUser} disabled={loadingUsers}>
                   <SelectTrigger id="users">
-                    <SelectValue placeholder="Selecione usuários..." />
+                    <SelectValue placeholder={loadingUsers ? "Carregando..." : "Adicionar participantes..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableUsers
                       .filter((u) => !formData.users.find((fu) => fu.id === u.id))
                       .map((user) => (
                         <SelectItem key={user.id} value={user.id}>
-                          {user.name}
+                          {user.fullName}
                         </SelectItem>
                       ))}
                   </SelectContent>
                 </Select>
               )}
               {formData.users.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2">
                   {formData.users.map((user) => (
                     <Badge key={user.id} variant="secondary" className="gap-1">
                       {user.name}
@@ -379,44 +420,6 @@ export function EventFormDialog({
                       )}
                     </Badge>
                   ))}
-                </div>
-              )}
-            </div>
-
-            {/* Cliente (Opcional) */}
-            <div className="grid gap-2">
-              <Label htmlFor="client">Cliente (Opcional)</Label>
-              {!isReadOnly && (
-                <Select
-                  value={formData.client?.id}
-                  onValueChange={handleSetClient}
-                >
-                  <SelectTrigger id="client">
-                    <SelectValue placeholder="Selecione um cliente..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientOptions.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {formData.client && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="outline" className="gap-1">
-                    {formData.client.name}
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveClient}
-                        className="ml-1 rounded-full hover:bg-secondary-foreground/20"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </Badge>
                 </div>
               )}
             </div>

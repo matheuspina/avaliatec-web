@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Users, Briefcase, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin } from "lucide-react"
 import { usePermissions } from "@/contexts/permission-context"
 import { SECTIONS } from "@/lib/types"
 import { AppMainBleed } from "@/components/app-main-bleed"
+import { ActivityLogModal } from "@/components/activities/activity-log-modal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,58 @@ const EVENT_TYPE_BADGE: Record<string, 'default' | 'secondary' | 'destructive'> 
   visit: 'secondary',
 }
 
+// ─── Helpers para Atividades ──────────────────────────────────────────────────
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  projects: 'Projeto',
+  clients: 'Cliente',
+  tasks: 'Tarefa',
+  events: 'Evento',
+  files: 'Arquivo',
+  users: 'Usuário',
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  created: 'criou',
+  updated: 'atualizou',
+  deleted: 'excluiu',
+}
+
+// Artigos definidos para cada tipo de entidade
+const ENTITY_ARTICLES: Record<string, string> = {
+  projects: 'o',
+  clients: 'o',
+  tasks: 'a',
+  events: 'o',
+  files: 'o',
+  users: 'o',
+}
+
+function formatActivityMessage(activity: RecentActivity): string {
+  const userName = activity.user?.name || 'Sistema'
+  const action = ACTION_LABELS[activity.action] || activity.action
+  const entityType = ENTITY_TYPE_LABELS[activity.entity_type] || activity.entity_type
+  const article = ENTITY_ARTICLES[activity.entity_type] || 'o'
+
+  // Extrair nome da entidade dos detalhes
+  let entityName = ''
+  if (activity.details) {
+    const newData = activity.details.new as Record<string, unknown> | null
+    const oldData = activity.details.old as Record<string, unknown> | null
+    const data = newData || oldData
+    
+    if (data) {
+      entityName = (data.name as string) || (data.title as string) || (data.full_name as string) || ''
+    }
+  }
+
+  if (entityName) {
+    return `${userName} ${action} ${article} ${entityType.toLowerCase()} "${entityName}"`
+  }
+  
+  return `${userName} ${action} um${article === 'a' ? 'a' : ''} ${entityType.toLowerCase()}`
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -99,6 +153,7 @@ export default function DashboardPage() {
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [isFetching, setIsFetching] = useState(false)
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false)
 
   // Redirect to first available section if no access to dashboard
   useEffect(() => {
@@ -314,7 +369,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Registro de Alterações</CardTitle>
             <CardDescription>
-              Últimas atualizações do sistema
+              Últimas 5 atualizações do sistema
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -322,30 +377,44 @@ export default function DashboardPage() {
               {recentActivities.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
               ) : (
-                recentActivities.map((activity) => (
-                  <div key={activity.id} className="text-xs space-y-0.5">
-                    <p className="font-medium text-foreground">
-                      {activity.user?.name ?? 'Sistema'}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {activity.action} · {activity.entity_type}
-                    </p>
-                    <p className="text-muted-foreground/60">
-                      {new Date(activity.created_at).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                ))
+                <>
+                  {recentActivities.map((activity) => (
+                    <div key={activity.id} className="rounded-lg border p-3 space-y-1">
+                      <p className="text-xs font-medium text-foreground">
+                        {formatActivityMessage(activity)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(activity.created_at).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => setIsActivityModalOpen(true)}
+                  >
+                    Ver mais
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
         </Card>
 
       </div>
+
+      {/* Activity Log Modal */}
+      <ActivityLogModal
+        open={isActivityModalOpen}
+        onOpenChange={setIsActivityModalOpen}
+      />
     </AppMainBleed>
   )
 }

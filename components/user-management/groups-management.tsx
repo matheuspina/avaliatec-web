@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Plus, Pencil, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,11 +43,7 @@ export function GroupsManagement() {
   })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    loadGroups()
-  }, [])
-
-  async function loadGroups() {
+  const loadGroups = useCallback(async () => {
     try {
       setLoading(true)
       const supabase = createClient()
@@ -85,7 +81,11 @@ export function GroupsManagement() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    void loadGroups()
+  }, [loadGroups])
 
   function handleOpenDialog(group?: UserGroup) {
     if (group) {

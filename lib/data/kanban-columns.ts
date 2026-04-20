@@ -30,6 +30,13 @@ const buildStatusKey = (name: string): string => {
   return `${base || "coluna"}_${randomSuffix()}`
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value)
+}
+
 /**
  * Lista todas as colunas do Kanban
  * Se project_id for fornecido, retorna apenas colunas daquele projeto
@@ -43,13 +50,17 @@ export async function listKanbanColumns(projectId?: string | null): Promise<Kanb
     .select("id, name, color, position, project_id, status_key")
     .order("position", { ascending: true })
 
-  // Se projectId for fornecido, busca colunas desse projeto
-  // Se for null explicitamente, busca colunas globais
-  // Se não for fornecido, busca colunas globais por padrão
-  if (projectId !== undefined) {
-    query = query.eq("project_id", projectId)
-  } else {
+  // Colunas globais: use sempre `.is(null)` — nunca `.eq(..., null)` (vira "null" na URL e quebra uuid).
+  const useGlobalColumns =
+    projectId === undefined ||
+    projectId === null ||
+    (typeof projectId === "string" &&
+      (projectId === "" || projectId === "null" || !isUuid(projectId)))
+
+  if (useGlobalColumns) {
     query = query.is("project_id", null)
+  } else {
+    query = query.eq("project_id", projectId)
   }
 
   const { data, error } = await query
@@ -64,6 +75,12 @@ export async function listKanbanColumns(projectId?: string | null): Promise<Kanb
     project_id: col.project_id,
     statusKey: col.status_key,
   }))
+}
+
+export async function listKanbanColumnsWithFallback(projectId: string): Promise<KanbanColumn[]> {
+  const projectColumns = await listKanbanColumns(projectId)
+  if (projectColumns.length > 0) return projectColumns
+  return listKanbanColumns(null)
 }
 
 /**

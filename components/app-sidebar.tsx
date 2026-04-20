@@ -96,7 +96,7 @@ function SidebarSkeleton() {
           />
         </div>
       </SidebarHeader>
-      <Separator />
+      <Separator className="border-sidebar-border" />
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -105,8 +105,8 @@ function SidebarSkeleton() {
                 key={i}
                 className="flex items-center gap-3 rounded-md px-3 py-2"
               >
-                <div className="h-4 w-4 animate-pulse rounded bg-muted" />
-                <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-4 animate-pulse rounded bg-sidebar-foreground/10" />
+                <div className="h-4 flex-1 animate-pulse rounded bg-sidebar-foreground/10" />
               </div>
             ))}
           </SidebarGroupContent>
@@ -114,8 +114,8 @@ function SidebarSkeleton() {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="h-4 w-4 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-4 animate-pulse rounded bg-sidebar-foreground/10" />
+          <div className="h-4 w-16 animate-pulse rounded bg-sidebar-foreground/10" />
         </div>
       </SidebarFooter>
     </Sidebar>
@@ -178,7 +178,7 @@ export function AppSidebar() {
           />
         </div>
       </SidebarHeader>
-      <Separator />
+      <Separator className="border-sidebar-border" />
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -188,7 +188,7 @@ export function AppSidebar() {
                 active={pathname === item.href}
                 asChild
               >
-                <Link href={item.href}>
+                <Link href={item.href} prefetch={item.href === "/kanban" ? false : undefined}>
                   <item.icon className="h-4 w-4" />
                   {item.title}
                 </Link>
@@ -200,7 +200,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+          className="w-full justify-start gap-3 text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-[linear-gradient(90deg,hsl(0_0%_100%_/0),hsl(0_0%_100%_/0.06))] [&_svg]:text-inherit"
           onClick={handleLogout}
           disabled={isLoggingOut}
         >
