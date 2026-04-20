@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { AuthProvider } from "@/components/auth-provider"
 import { PermissionProvider } from "@/contexts/permission-context"
+import { OnboardingGate } from "@/components/onboarding-gate"
 
 export default function AppLayout({
   children,
@@ -18,6 +19,7 @@ export default function AppLayout({
             </div>
           </main>
         </div>
+        <OnboardingGate />
       </PermissionProvider>
     </AuthProvider>
   )

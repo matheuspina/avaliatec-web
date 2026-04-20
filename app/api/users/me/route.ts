@@ -4,24 +4,20 @@ import { getUserPermissions } from '@/lib/services/permissions'
 
 /**
  * API Route for Current User
- * 
- * GET /api/users/me - Get current user with permissions
+ *
+ * GET  /api/users/me - Get current user with permissions
+ * PATCH /api/users/me - Update own profile (full_name, avatar_url, onboarding_completed)
  */
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
-    // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    // Get current user from users table with group information
     const { data: currentUser, error: userError } = await supabase
       .from('users')
       .select(`
@@ -33,6 +29,7 @@ export async function GET(request: NextRequest) {
         group_id,
         status,
         last_access,
+        onboarding_completed,
         created_at,
         updated_at,
         user_groups!group_id(
@@ -45,52 +42,90 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (userError || !currentUser) {
-      return NextResponse.json(
-        { error: 'User not found', code: 'USER_NOT_FOUND' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    // Check if user is inactive
     if (currentUser.status === 'inactive') {
-      return NextResponse.json(
-        { error: 'User account is inactive', code: 'USER_INACTIVE' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    // Get user permissions
     const permissions = await getUserPermissions(currentUser.id)
-
-    // Transform response to include group and permissions
-    const response = {
-      id: currentUser.id,
-      auth_user_id: currentUser.auth_user_id,
-      email: currentUser.email,
-      full_name: currentUser.full_name,
-      avatar_url: currentUser.avatar_url,
-      group_id: currentUser.group_id,
-      status: currentUser.status,
-      last_access: currentUser.last_access,
-      created_at: currentUser.created_at,
-      updated_at: currentUser.updated_at,
-      group: (currentUser as any).user_groups ? {
-        id: (currentUser as any).user_groups.id,
-        name: (currentUser as any).user_groups.name,
-        description: (currentUser as any).user_groups.description
-      } : null,
-      permissions
-    }
 
     return NextResponse.json({
       success: true,
-      data: response
+      data: {
+        ...currentUser,
+        permissions,
+      },
     })
-
-  } catch (error) {
-    console.error('Error in GET /api/users/me:', error)
+  } catch {
     return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
+      { error: 'Não foi possível processar sua solicitação' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const { data: currentUser, error: userError } = await supabase
+      .from('users')
+      .select('id, status')
+      .eq('auth_user_id', user.id)
+      .single()
+
+    if (userError || !currentUser) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    if (currentUser.status === 'inactive') {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    const body = await request.json()
+
+    // Only allow updating safe self-service fields
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (typeof body.full_name === 'string' && body.full_name.trim().length > 0) {
+      updates.full_name = body.full_name.trim()
+    }
+
+    if (body.avatar_url !== undefined) {
+      updates.avatar_url = body.avatar_url ?? null
+    }
+
+    if (body.onboarding_completed === true) {
+      updates.onboarding_completed = true
+    }
+
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', currentUser.id)
+      .select('id, email, full_name, avatar_url, onboarding_completed')
+      .single()
+
+    if (updateError) {
+      return NextResponse.json(
+        { error: 'Não foi possível processar sua solicitação' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, data: updatedUser })
+  } catch {
+    return NextResponse.json(
+      { error: 'Não foi possível processar sua solicitação' },
       { status: 500 }
     )
   }

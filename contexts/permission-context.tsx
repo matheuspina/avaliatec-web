@@ -98,6 +98,21 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
 
   useEffect(() => {
     loadPermissions()
+
+    // Re-load permissions when auth state changes (e.g. after OAuth redirect)
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        loadPermissions()
+      } else if (event === 'SIGNED_OUT') {
+        setPermissions({})
+        setCurrentUser(null)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const hasPermission = (

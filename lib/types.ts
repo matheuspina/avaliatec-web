@@ -219,6 +219,7 @@ export type User = {
   group_id: string | null
   status: 'active' | 'inactive'
   last_access: string | null
+  onboarding_completed: boolean
   created_at: string
   updated_at: string
 }

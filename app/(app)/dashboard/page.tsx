@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,37 +9,137 @@ import { usePermissions } from "@/contexts/permission-context"
 import { SECTIONS } from "@/lib/types"
 import { AppMainBleed } from "@/components/app-main-bleed"
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface DashboardUser {
+  id: string
+  name: string
+  avatar_url?: string | null
+}
+
+interface DashboardClient {
+  id: string
+  name: string
+}
+
+interface TodayEvent {
+  id: string
+  title: string
+  description: string | null
+  time: string
+  location: string | null
+  type: 'meeting' | 'deadline' | 'visit'
+  client: DashboardClient | null
+  users: DashboardUser[]
+}
+
+interface RecentProject {
+  id: string
+  code: string
+  name: string
+  status: string
+  client: DashboardClient | null
+}
+
+interface RecentActivity {
+  id: string
+  action: string
+  entity_type: string
+  entity_id: string
+  details: Record<string, unknown> | null
+  created_at: string
+  user: DashboardUser | null
+}
+
+interface DashboardData {
+  total_clients: number
+  active_projects: number
+  completed_projects: number
+  pending_tasks: number
+  today_events: TodayEvent[]
+  recent_projects: RecentProject[]
+  recent_activities: RecentActivity[]
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const STATUS_LABELS: Record<string, string> = {
+  backlog: 'Backlog',
+  todo: 'A fazer',
+  in_progress: 'Em andamento',
+  review: 'Em revisão',
+  done: 'Concluído',
+}
+
+const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+  backlog: 'secondary',
+  todo: 'secondary',
+  in_progress: 'default',
+  review: 'default',
+  done: 'outline',
+}
+
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  meeting: 'Reunião',
+  deadline: 'Prazo',
+  visit: 'Visita',
+}
+
+const EVENT_TYPE_BADGE: Record<string, 'default' | 'secondary' | 'destructive'> = {
+  meeting: 'default',
+  deadline: 'destructive',
+  visit: 'secondary',
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const router = useRouter()
-  const { hasPermission, isLoading, permissions } = usePermissions()
+  const { hasPermission, isLoading, permissions, currentUser } = usePermissions()
 
-  // Mock data for now - in production, this would be fetched client-side
-  // Using variables instead of constants to avoid TypeScript comparison errors
-  const [totalClients] = useState(0)
-  const [activeProjects] = useState(0)
-  const [completedProjects] = useState(0)
-  const [pendingTasks] = useState(0)
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [isFetching, setIsFetching] = useState(false)
 
   // Redirect to first available section if no access to dashboard
   useEffect(() => {
     if (!isLoading && !hasPermission('dashboard', 'view')) {
-      // Find first section user has access to
       const availableSections = Object.keys(SECTIONS).filter(
         (key) => hasPermission(key as any, 'view')
       )
-      
+
       if (availableSections.length > 0) {
         const firstSection = SECTIONS[availableSections[0] as keyof typeof SECTIONS]
         router.push(firstSection.path)
-      } else {
-        // No sections available, redirect to access denied or logout
-        router.push('/login')
+      } else if (currentUser !== null) {
+        // User is authenticated but has no permissions yet (e.g. new user pending group assignment)
+        // Don't redirect to login — just stay and show empty state
       }
+      // If currentUser is null, the middleware will handle the redirect to login
     }
-  }, [isLoading, hasPermission, router, permissions])
+  }, [isLoading, hasPermission, router, permissions, currentUser])
 
-  // Show loading state while checking permissions
-  if (isLoading) {
+  const fetchDashboard = useCallback(async () => {
+    setIsFetching(true)
+    try {
+      const res = await fetch('/api/dashboard')
+      if (!res.ok) return
+      const json = await res.json()
+      if (json.success) setDashboardData(json.data as DashboardData)
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err)
+    } finally {
+      setIsFetching(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isLoading && hasPermission('dashboard', 'view')) {
+      fetchDashboard()
+    }
+  }, [isLoading, hasPermission, fetchDashboard])
+
+  // ── Loading ──────────────────────────────────────────────────────────────────
+  if (isLoading || isFetching) {
     return (
       <AppMainBleed className="items-center justify-center">
         <div className="text-center">
@@ -50,121 +150,46 @@ export default function DashboardPage() {
     )
   }
 
-  // Don't render if no permission (will redirect)
   if (!hasPermission('dashboard', 'view')) {
     return null
   }
 
-  const todayEvents = [
-    {
-      id: "1",
-      title: "Reunião com Cliente ABC",
-      description: "Apresentação do projeto de avaliação",
-      time: "10:00",
-      location: "Escritório Central",
-      type: "meeting" as const,
-      users: [
-        { id: "1", name: "João Silva" },
-        { id: "2", name: "Maria Santos" },
-      ],
-      client: { id: "1", name: "Empresa ABC Ltda" },
-    },
-    {
-      id: "2",
-      title: "Vistoria Imóvel Comercial",
-      description: "Vistoria para elaboração de laudo",
-      time: "14:30",
-      location: "Av. Paulista, 1000",
-      type: "visit" as const,
-      users: [{ id: "3", name: "Pedro Costa" }],
-      client: { id: "2", name: "Indústria XYZ S.A." },
-    },
-    {
-      id: "3",
-      title: "Prazo Projeto AV-2024-001",
-      description: "Entrega do relatório final",
-      time: "18:00",
-      location: "Online",
-      type: "deadline" as const,
-      users: [{ id: "1", name: "João Silva" }],
-    },
-  ]
-
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case "meeting":
-        return "default"
-      case "deadline":
-        return "destructive"
-      case "visit":
-        return "secondary"
-      default:
-        return "default"
-    }
-  }
-
-  const getEventTypeLabel = (type: string) => {
-    switch (type) {
-      case "meeting":
-        return "Reunião"
-      case "deadline":
-        return "Prazo"
-      case "visit":
-        return "Visita"
-      default:
-        return type
-    }
-  }
+  const d = dashboardData
 
   const stats = [
     {
       title: "Total de Clientes",
-      value: totalClients.toString(),
+      value: d?.total_clients ?? 0,
       icon: Users,
-      description: `${totalClients} ${totalClients === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}`,
+      description: `${d?.total_clients ?? 0} ${(d?.total_clients ?? 0) === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}`,
       color: "text-blue-500",
     },
     {
       title: "Projetos Ativos",
-      value: activeProjects.toString(),
+      value: d?.active_projects ?? 0,
       icon: Briefcase,
-      description: `${activeProjects} ${activeProjects === 1 ? 'projeto em andamento' : 'projetos em andamento'}`,
+      description: `${d?.active_projects ?? 0} ${(d?.active_projects ?? 0) === 1 ? 'projeto em andamento' : 'projetos em andamento'}`,
       color: "text-primary",
     },
     {
       title: "Projetos Concluídos",
-      value: completedProjects.toString(),
+      value: d?.completed_projects ?? 0,
       icon: CheckCircle2,
       description: "Total acumulado",
       color: "text-green-500",
     },
     {
       title: "Tarefas Pendentes",
-      value: pendingTasks.toString(),
+      value: d?.pending_tasks ?? 0,
       icon: Clock,
-      description: `${pendingTasks} ${pendingTasks === 1 ? 'tarefa pendente' : 'tarefas pendentes'}`,
+      description: `${d?.pending_tasks ?? 0} ${(d?.pending_tasks ?? 0) === 1 ? 'tarefa pendente' : 'tarefas pendentes'}`,
       color: "text-orange-500",
     },
   ]
 
-  const recentProjects: any[] = []
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Em andamento":
-        return "default"
-      case "Em espera":
-        return "secondary"
-      case "Planejamento":
-        return "secondary"
-      case "Concluído":
-        return "outline"
-      case "Cancelado":
-        return "destructive"
-      default:
-        return "default"
-    }
-  }
+  const todayEvents = d?.today_events ?? []
+  const recentProjects = d?.recent_projects ?? []
+  const recentActivities = d?.recent_activities ?? []
 
   return (
     <AppMainBleed className="space-y-6">
@@ -175,6 +200,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title}>
@@ -194,7 +220,10 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Main panels */}
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_0.7fr]">
+
+        {/* Recent Projects */}
         <Card>
           <CardHeader>
             <CardTitle>Projetos Recentes</CardTitle>
@@ -209,17 +238,17 @@ export default function DashboardPage() {
               ) : (
                 recentProjects.map((project) => (
                   <div
-                    key={project.code}
+                    key={project.id}
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="space-y-1">
-                      <p className="text-sm font-medium">{project.title}</p>
+                      <p className="text-sm font-medium">{project.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {project.code} • {project.client}
+                        {project.code}{project.client ? ` • ${project.client.name}` : ''}
                       </p>
                     </div>
-                    <Badge variant={getStatusColor(project.status)}>
-                      {project.status}
+                    <Badge variant={STATUS_BADGE[project.status] ?? 'default'}>
+                      {STATUS_LABELS[project.status] ?? project.status}
                     </Badge>
                   </div>
                 ))
@@ -228,6 +257,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Today's Events */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -240,55 +270,81 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {todayEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="rounded-lg border p-3"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="text-sm font-medium">{event.title}</p>
-                    <Badge variant={getEventTypeColor(event.type)} className="text-xs">
-                      {getEventTypeLabel(event.type)}
-                    </Badge>
+              {todayEvents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum evento hoje</p>
+              ) : (
+                todayEvents.map((event) => (
+                  <div key={event.id} className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="text-sm font-medium">{event.title}</p>
+                      <Badge variant={EVENT_TYPE_BADGE[event.type] ?? 'default'} className="text-xs">
+                        {EVENT_TYPE_LABEL[event.type] ?? event.type}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {event.time}
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          {event.location}
+                        </div>
+                      )}
+                    </div>
+                    {event.users.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {event.users.map((user) => (
+                          <Badge key={user.id} variant="secondary" className="text-xs py-0">
+                            {user.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {event.time}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      {event.location}
-                    </div>
-                  </div>
-                  {event.users && event.users.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {event.users.map((user) => (
-                        <Badge key={user.id} variant="secondary" className="text-xs py-0">
-                          {user.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Recent Activity */}
         <Card>
           <CardHeader>
-            <CardTitle>Avaliatec - Inteligencia Patrimonial</CardTitle>
+            <CardTitle>Registro de Alterações</CardTitle>
             <CardDescription>
               Últimas atualizações do sistema
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+            <div className="space-y-3">
+              {recentActivities.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+              ) : (
+                recentActivities.map((activity) => (
+                  <div key={activity.id} className="text-xs space-y-0.5">
+                    <p className="font-medium text-foreground">
+                      {activity.user?.name ?? 'Sistema'}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {activity.action} · {activity.entity_type}
+                    </p>
+                    <p className="text-muted-foreground/60">
+                      {new Date(activity.created_at).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
+
       </div>
     </AppMainBleed>
   )

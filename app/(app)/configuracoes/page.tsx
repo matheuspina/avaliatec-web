@@ -28,6 +28,15 @@ import {
 } from "@/lib/data/project-statuses"
 import { useToast } from "@/hooks/use-toast"
 import { AppMainBleed } from "@/components/app-main-bleed"
+import { createClient } from "@/lib/supabase/client"
+
+interface UserProfile {
+  id: string
+  email: string
+  full_name: string
+  group_id: string | null
+  group_name: string | null
+}
 
 export default function ConfiguracoesPage() {
   const { toast } = useToast()
@@ -42,25 +51,36 @@ export default function ConfiguracoesPage() {
     description: "",
   })
 
+  // Perfil do usuário logado
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileName, setProfileName] = useState("")
+
   // Check if user is admin (has a group named "Administrador")
   const [isAdmin, setIsAdmin] = useState(false)
 
-  useEffect(() => {
-    async function checkAdmin() {
-      if (currentUser?.group_id) {
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
-        const { data: group } = await supabase
-          .from('user_groups')
-          .select('name')
-          .eq('id', currentUser.group_id)
-          .single()
-        
-        setIsAdmin(group?.name === 'Administrador')
-      }
+  // Carrega o perfil real via RPC
+  const loadUserProfile = useCallback(async () => {
+    try {
+      setProfileLoading(true)
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc("get_current_user_profile")
+      if (error) throw error
+      const profile = data as UserProfile
+      setUserProfile(profile)
+      setProfileName(profile.full_name)
+      setIsAdmin(profile.group_name === "Administrador")
+    } catch (error) {
+      console.error("Erro ao carregar perfil:", error)
+    } finally {
+      setProfileLoading(false)
     }
-    checkAdmin()
-  }, [currentUser])
+  }, [])
+
+  useEffect(() => {
+    void loadUserProfile()
+  }, [])
 
   const loadStatuses = useCallback(async () => {
     try {
@@ -175,6 +195,36 @@ export default function ConfiguracoesPage() {
       await loadStatuses()
     } catch (error) {
       console.error("Erro ao atualizar status:", error)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    if (!profileName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome não pode ser vazio",
+        variant: "destructive",
+      })
+      return
+    }
+    try {
+      setProfileSaving(true)
+      const supabase = createClient()
+      const { error } = await supabase.rpc("update_current_user_profile", {
+        p_full_name: profileName.trim(),
+      })
+      if (error) throw error
+      toast({ title: "Sucesso", description: "Perfil atualizado com sucesso" })
+      await loadUserProfile()
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as alterações",
+        variant: "destructive",
+      })
+    } finally {
+      setProfileSaving(false)
     }
   }
 
@@ -302,63 +352,45 @@ export default function ConfiguracoesPage() {
           <CardHeader>
             <CardTitle>Perfil do Usuário</CardTitle>
             <CardDescription>
-              Informações básicas do usuário logado (mock)
+              Informações do usuário logado
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input id="name" defaultValue="João Silva" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="joao.silva@avaliatec.com" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="role">Papel no Sistema</Label>
-              <Input id="role" defaultValue="Técnico" disabled />
-            </div>
-            <Button>Salvar Alterações</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Papéis de Usuário</CardTitle>
-            <CardDescription>
-              Papéis disponíveis no sistema (apenas UI - sem controle de acesso)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="font-medium">Diretoria</p>
-                  <p className="text-sm text-muted-foreground">
-                    Acesso completo ao sistema e relatórios
-                  </p>
+            {profileLoading ? (
+              <p className="text-muted-foreground text-sm">Carregando...</p>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="profile-name">Nome</Label>
+                  <Input
+                    id="profile-name"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    disabled={profileSaving}
+                  />
                 </div>
-                <Badge>Admin</Badge>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="font-medium">Técnico</p>
-                  <p className="text-sm text-muted-foreground">
-                    Gerenciar projetos e elaborar laudos
-                  </p>
+                <div className="grid gap-2">
+                  <Label htmlFor="profile-email">Email</Label>
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={userProfile?.email ?? ""}
+                    disabled
+                  />
                 </div>
-                <Badge variant="secondary">Técnico</Badge>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="font-medium">Atendimento</p>
-                  <p className="text-sm text-muted-foreground">
-                    Gerenciar clientes e agendar visitas
-                  </p>
+                <div className="grid gap-2">
+                  <Label htmlFor="profile-group">Grupo</Label>
+                  <Input
+                    id="profile-group"
+                    value={userProfile?.group_name ?? "Sem grupo"}
+                    disabled
+                  />
                 </div>
-                <Badge variant="outline">Atendimento</Badge>
-              </div>
-            </div>
+                <Button onClick={handleSaveProfile} disabled={profileSaving}>
+                  {profileSaving ? "Salvando..." : "Salvar Alterações"}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
